@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10111a">
+  <title>Incremental Arcade</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b0c12; --panel:#141622; --panel2:#1b1e2d; --line:#2b3045; --text:#f4f5ff; --muted:#a6abc3; --accent:#9b8cff; --accent2:#5eead4; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:radial-gradient(ellipse at top,#1a1c31 0,#0b0c12 52%); color:var(--text); font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; min-height:100vh; }
+    header { padding:34px 20px 24px; text-align:center; border-bottom:1px solid var(--line); }
+    .eyebrow { color:var(--accent2); text-transform:uppercase; letter-spacing:.18em; font-size:.75rem; font-weight:800; }
+    h1 { margin:8px 0; font-size:clamp(2rem,5vw,3.5rem); line-height:1.08; letter-spacing:-.04em; }
+    header p { margin:12px auto 0; max-width:680px; color:var(--muted); }
+    main { width:min(1200px,100%); padding:24px 18px 56px; margin:auto; }
+    .toolbar { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:18px; }
+    input[type="search"] { flex:1 1 240px; min-width:0; padding:12px 14px; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:12px; font:inherit; }
+    .filters { display:flex; flex-wrap:wrap; gap:8px; }
+    button, .linkbtn { cursor:pointer; border:1px solid var(--line); border-radius:10px; padding:9px 12px; color:var(--text); background:var(--panel2); font:inherit; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:7px; }
+    button:hover, .linkbtn:hover { border-color:var(--accent); transform:translateY(-1px); }
+    button.active { background:var(--accent); color:#100d22; border-color:transparent; font-weight:800; }
+    .layout { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(280px,.7fr); gap:18px; align-items:start; }
+    .panel { background:rgba(20,22,34,.94); border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+    .panel-head { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:12px; align-items:center; }
+    h2 { font-size:1.05rem; margin:0; }
+    .subtle { color:var(--muted); font-size:.85rem; }
+    .game-screen { background:#07080d; }
+    iframe { display:block; width:100%; height:560px; border:0; background:#fff; }
+    .screen-actions { display:flex; gap:8px; flex-wrap:wrap; padding:12px; border-top:1px solid var(--line); }
+    .screen-note { padding:0 12px 14px; color:var(--muted); font-size:.82rem; }
+    .game-list { display:grid; gap:10px; padding:12px; max-height:720px; overflow:auto; }
+    .game-card { border:1px solid var(--line); border-radius:12px; padding:13px; background:#171927; }
+    .game-card.selected { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+    .game-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+    .game-title { font-weight:800; }
+    .tag { white-space:nowrap; font-size:.72rem; color:var(--accent2); border:1px solid #28564f; background:#102622; border-radius:999px; padding:3px 8px; }
+    .game-card p { margin:6px 0 12px; color:var(--muted); font-size:.87rem; }
+    .card-actions { display:flex; flex-wrap:wrap; gap:8px; }
+    .card-actions button { padding:7px 10px; font-size:.86rem; }
+    .empty { color:var(--muted); padding:20px; text-align:center; }
+    footer { text-align:center; color:var(--muted); padding:22px 16px 34px; font-size:.84rem; }
+    .tip { margin-top:18px; padding:14px 16px; border:1px solid var(--line); border-radius:12px; color:var(--muted); background:rgba(20,22,34,.7); font-size:.9rem; }
+    a { color:var(--accent2); }
+    @media(max-width:850px) { .layout { grid-template-columns:1fr; } iframe { height:65vh; min-height:420px; } .game-list { max-height:none; } }
+    @media(max-width:480px) { main { padding:16px 10px 40px; } header { padding:28px 16px 20px; } iframe { min-height:360px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">Idle • Clicker • Incremental</div>
+    <h1>Incremental Arcade</h1>
+    <p>Start with one click. End up with numbers too big to understand. Pick a game below and jump straight in.</p>
+  </header>
+  <main>
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search games…" aria-label="Search games">
+      <div class="filters" id="filters" aria-label="Filter games">
+        <button class="active" data-filter="All">All games</button>
+        <button data-filter="Clicker">Clicker</button>
+        <button data-filter="Strategy">Strategy</button>
+        <button data-filter="Story">Story</button>
+        <button data-filter="Prestige">Prestige</button>
+        <button data-filter="Tower Defense">Tower Defense</button>
+        <button data-filter="Numbers">Numbers</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <section class="panel" aria-label="Game player">
+        <div class="panel-head">
+          <div>
+            <h2 id="current-title">Universal Paperclips</h2>
+            <div class="subtle" id="current-desc">Turn paperclips into an unexpectedly huge operation.</div>
+          </div>
+          <span class="tag" id="current-tag">Story</span>
+        </div>
+        <div class="game-screen">
+          <iframe id="player" title="Selected incremental game" src="https://www.decisionproblem.com/paperclips/index2.html" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay"></iframe>
+        </div>
+        <div class="screen-actions">
+          <a class="linkbtn" id="open-game" href="https://www.decisionproblem.com/paperclips/index2.html" target="_blank" rel="noopener noreferrer">↗ Open game in new tab</a>
+          <button id="reload-game" type="button">⟳ Reload frame</button>
+        </div>
+        <div class="screen-note">If the game area stays blank or shows a browser error, the game's host may block iframe embedding. Use “Open game in new tab” instead.</div>
+      </section>
+
+      <section class="panel" aria-label="Game library">
+        <div class="panel-head">
+          <h2>Game library</h2>
+          <span class="subtle" id="count">62 games</span>
+        </div>
+        <div class="game-list" id="game-list"></div>
+      </section>
+    </div>
+
+    <div class="tip"><strong>GitHub Pages tip:</strong> Save this file as <code>index.html</code> in the root of your repository, commit it, then enable Pages in your repository’s <em>Settings → Pages</em>. This page is static HTML/CSS/JavaScript and needs no build step.</div>
+  </main>
+  <footer>Fan-made game directory. Games are hosted by their respective creators; this page does not own or redistribute them.</footer>
+
+  <script>
+    const games = [
+      { name:"Cookie Clicker", category:"Clicker", url:"https://orteil.dashnet.org/cookieclicker/", desc:"Bake cookies, buy buildings, automate production, and keep scaling.", tags:["Clicker","Idle"] },
+      { name:"Antimatter Dimensions", category:"Prestige", url:"https://ivark.github.io/", desc:"Build dimensions, multiply production, and unlock layers of resets.", tags:["Prestige","Numbers"] },
+      { name:"Universal Paperclips", category:"Story", url:"https://www.decisionproblem.com/paperclips/index2.html", desc:"Begin with paperclips and discover where an automated business can lead.", tags:["Story","Strategy"] },
+      { name:"A Dark Room", category:"Story", url:"https://adarkroom.doublespeakgames.com/", desc:"Light a fire, gather resources, and uncover a minimalist adventure.", tags:["Story","Strategy"] },
+      { name:"Candy Box 2", category:"Story", url:"https://candybox2.github.io/", desc:"A tiny candy counter grows into a quirky text adventure.", tags:["Story","Clicker"] },
+      { name:"Trimps", category:"Strategy", url:"https://trimps.github.io/", desc:"Gather resources, grow your population, explore zones, and fight.", tags:["Strategy","Idle"] },
+      { name:"Kittens Game", category:"Strategy", url:"https://kittensgame.com/web/", desc:"Manage a kitten village, balance resources, and develop technology.", tags:["Strategy","Prestige"] },
+      { name:"Evolve", category:"Strategy", url:"https://pmotschmann.github.io/Evolve/", desc:"Guide life from simple beginnings toward a complex civilization.", tags:["Strategy","Prestige"] },
+      { name:"Swarm Simulator", category:"Clicker", url:"https://swarmsim.github.io/", desc:"Grow a swarm, expand production, and unlock increasingly wild scales.", tags:["Clicker","Idle"] },
+      { name:"Shark Game", category:"Clicker", url:"https://cirri.al/sharks/", desc:"A strange, satisfying incremental about growing a shark empire.", tags:["Clicker","Idle"] },
+      { name:"Realm Grinder", category:"Prestige", url:"https://www.kongregate.com/games/divinegames/realm-grinder", desc:"Choose factions, build an economy, and experiment with long-term upgrades.", tags:["Prestige","Strategy"] },
+      { name:"Melvor Idle", category:"Strategy", url:"https://melvoridle.com/", desc:"A skill-based idle RPG inspired by classic adventure grinds.", tags:["Strategy","Idle"] },
+
+      { name:"Clicker Heroes", category:"Clicker", url:"https://www.clickerheroes.com/", desc:"Hire heroes, defeat monsters, and build enormous damage numbers.", tags:["Clicker","Idle"] },
+      { name:"Idle Slayer", category:"Clicker", url:"https://idleslayer.com/", desc:"Collect coins, upgrade your character, and progress through idle and active play.", tags:["Clicker","Idle"] },
+      { name:"NGU Idle", category:"Prestige", url:"https://www.kongregate.com/games/4G/ngu-idle", desc:"A sprawling idle RPG packed with upgrades, gear, and layers of progression.", tags:["Prestige","RPG"] },
+      { name:"The Prestige Tree", category:"Prestige", url:"https://jacorb90.me/Prestige-Tree/", desc:"Explore a branching tree of resource layers and reset mechanics.", tags:["Prestige","Numbers"] },
+      { name:"Synergism", category:"Prestige", url:"https://pseudo-corp.github.io/SynergismOfficial/", desc:"Combine currencies and upgrades in a deep incremental progression system.", tags:["Prestige","Numbers"] },
+      { name:"Ordinal Markup", category:"Prestige", url:"https://ordinal-markup.github.io/", desc:"An unusual number-focused incremental game built around ordinals.", tags:["Prestige","Numbers"] },
+      { name:"Incremental Mass Rewritten", category:"Prestige", url:"https://mrredshark77.github.io/incremental-mass-rewritten/", desc:"Grow mass through increasingly complex layers and upgrades.", tags:["Prestige","Numbers"] },
+      { name:"Exponential Idle", category:"Numbers", url:"https://exponential-idle.github.io/", desc:"Solve mathematical challenges while growing exponential values.", tags:["Numbers","Idle"] },
+      { name:"Idle Research", category:"Strategy", url:"https://idle-research.fandom.com/wiki/Idle_Research_Wiki", desc:"Research-themed incremental progression; the linked community page can help locate current versions.", tags:["Strategy","Idle"] },
+      { name:"Idle Game Maker", category:"Clicker", url:"https://www.kongregate.com/games/beefoxx/idle-game-maker", desc:"An idle game about building and improving games.", tags:["Clicker","Idle"] },
+      { name:"Idle Breakout", category:"Clicker", url:"https://www.coolmathgames.com/0-idle-breakout", desc:"Break bricks with automated balls and buy increasingly powerful upgrades.", tags:["Clicker","Idle"] },
+      { name:"Planet Clicker", category:"Clicker", url:"https://www.coolmathgames.com/0-planet-clicker", desc:"Generate energy and expand your planetary production.", tags:["Clicker","Idle"] },
+      { name:"Adventure Capitalist", category:"Clicker", url:"https://www.kongregate.com/games/ hyperhippogames/adventure-capitalist", desc:"Build businesses, hire managers, and grow a comically large fortune.", tags:["Clicker","Idle"] },
+      { name:"Adventure Communist", category:"Clicker", url:"https://www.kongregate.com/games/hyperhippogames/adventure-communist", desc:"Grow a resource empire with idle production and upgrades.", tags:["Clicker","Idle"] },
+      { name:"Idle Miner Tycoon", category:"Clicker", url:"https://www.idleminertycoon.com/", desc:"Manage mines, hire managers, and automate a mining empire.", tags:["Clicker","Management"] },
+      { name:"Idle Factory Tycoon", category:"Clicker", url:"https://www.kongregate.com/games/fluffyfairy/idle-factory-tycoon", desc:"Automate factory lines and scale production.", tags:["Clicker","Management"] },
+      { name:"Clickpocalypse II", category:"Strategy", url:"https://minmaxia.com/clickpocalypse2/", desc:"Send an adventuring party through dungeons in an automated RPG.", tags:["Strategy","RPG"] },
+      { name:"Godville", category:"Strategy", url:"https://godvillegame.com/", desc:"Watch an autonomous hero adventure in a humorous idle world.", tags:["Strategy","Idle"] },
+      { name:"Progress Knight", category:"Story", url:"https://progress-knight.netlify.app/", desc:"Advance through jobs and skills in a minimalist life progression game.", tags:["Story","Idle"] },
+      { name:"Progress Knight Reborn", category:"Story", url:"https://indomit.github.io/progress-knight/", desc:"A community version of the incremental life and career simulator.", tags:["Story","Idle"] },
+      { name:"The First Alkahistorian", category:"Strategy", url:"https://nagshell.github.io/first-alkahistorian/", desc:"An alchemy-themed incremental with crafting and layered progression.", tags:["Strategy","Prestige"] },
+      { name:"Matter Dimensions", category:"Prestige", url:"https://tiagorangel1.github.io/Matter-Dimensions/", desc:"Grow matter and unlock additional layers in a dimension-based incremental.", tags:["Prestige","Numbers"] },
+      { name:"Distance Incremental", category:"Prestige", url:"https://dan-simon.github.io/misc/Distance-Incremental/", desc:"Travel farther through upgrades, resets, and increasing distances.", tags:["Prestige","Numbers"] },
+      { name:"Derivative Clicker", category:"Numbers", url:"https://derivativeclicker.github.io/", desc:"An incremental game built around mathematical growth.", tags:["Numbers","Clicker"] },
+      { name:"Idle Dice", category:"Clicker", url:"https://www.kongregate.com/games/Luts91/idle-dice", desc:"Roll dice, earn money, and improve your odds with upgrades.", tags:["Clicker","Idle"] },
+      { name:"Idle Pins", category:"Clicker", url:"https://idle-pins.github.io/", desc:"Build up an idle economy through pins and upgrades.", tags:["Clicker","Idle"] },
+      { name:"CivClicker", category:"Strategy", url:"https://civclicker.sourceforge.net/civclicker/civclicker.html", desc:"Build a settlement, gather resources, and grow a civilization.", tags:["Strategy","Clicker"] },
+      { name:"Kittens Game (Mobile/Web)", category:"Strategy", url:"https://kittensgame.com/web/", desc:"A second quick entry to the popular cat-civilization idle game.", tags:["Strategy","Idle"] },
+      { name:"Universal Attractor", category:"Numbers", url:"https://mrredshark77.github.io/Universal-Attractor/", desc:"A number-driven incremental with layered progression.", tags:["Numbers","Prestige"] },
+      { name:"The Modding Tree", category:"Prestige", url:"https://themoddingtree.com/", desc:"Explore community-made incremental games built around a flexible prestige tree.", tags:["Prestige","Numbers"] },
+      { name:"Idle Ant", category:"Clicker", url:"https://idleant.com/", desc:"Grow an ant colony through upgrades and automated production.", tags:["Clicker","Idle"] },
+      { name:"Idle Evolution", category:"Strategy", url:"https://www.kongregate.com/games/CapPlay/idle-evolution-from-the-beginning", desc:"Progress through evolutionary stages in an idle simulation.", tags:["Strategy","Idle"] },
+      { name:"Factory Balls", category:"Strategy", url:"https://www.coolmathgames.com/0-factory-balls-forever", desc:"A puzzle-style production game about crafting the right ball designs.", tags:["Strategy","Puzzle"] },
+      { name:"Clicker Heroes 2", category:"Clicker", url:"https://www.clickerheroes2.com/", desc:"The sequel to Clicker Heroes, with an active purchase/download option.", tags:["Clicker","RPG"] },
+      { name:"Bloons TD 5", category:"Tower Defense", url:"https://ninja.kiwi/", desc:"Classic tower defense with monkey towers, upgrades, and bloon waves. May require purchase or separate launch.", tags:["Tower Defense","Strategy"] },
+      { name:"Bloons TD 6", category:"Tower Defense", url:"https://www.ninjakiwi.com/Games/Mobile/Bloons-TD-6.html", desc:"Modern Bloons tower defense with heroes, upgrades, and many maps. Usually a separate game purchase.", tags:["Tower Defense","Strategy"] },
+      { name:"Bloons TD Battles", category:"Tower Defense", url:"https://www.ninjakiwi.com/Games/Mobile/Bloons-TD-Battles.html", desc:"Competitive Bloons tower defense; availability and platform may vary.", tags:["Tower Defense","Strategy"] },
+      { name:"Bloons TD Battles 2", category:"Tower Defense", url:"https://www.ninjakiwi.com/Games/Mobile/Bloons-TD-Battles-2.html", desc:"PvP tower defense with heroes and tactical tower choices.", tags:["Tower Defense","Strategy"] },
+      { name:"Bloons Pop!", category:"Tower Defense", url:"https://www.ninjakiwi.com/", desc:"A Bloons puzzle spin-off; check the publisher site for current platform availability.", tags:["Tower Defense","Puzzle"] },
+      { name:"Bloons Super Monkey", category:"Tower Defense", url:"https://www.ninjakiwi.com/", desc:"An action-focused Bloons spin-off with upgradeable super monkeys.", tags:["Tower Defense","Action"] },
+      { name:"Balloons Tower Defense (Flashpoint)", category:"Tower Defense", url:"https://flashpointarchive.org/", desc:"Find classic early Bloons TD titles through the Flashpoint preservation project.", tags:["Tower Defense","Classic"] },
+      { name:"Kingdom Rush", category:"Tower Defense", url:"https://www.kingdomrush.com/", desc:"A beloved fantasy tower-defense series with heroes and upgrade paths.", tags:["Tower Defense","Strategy"] },
+      { name:"Kingdom Rush Frontiers", category:"Tower Defense", url:"https://www.kingdomrush.com/", desc:"A sequel with new towers, enemies, heroes, and campaign stages.", tags:["Tower Defense","Strategy"] },
+      { name:"Kingdom Rush Origins", category:"Tower Defense", url:"https://www.kingdomrush.com/", desc:"Fantasy tower defense focused on elven units and magical enemies.", tags:["Tower Defense","Strategy"] },
+      { name:"Plants vs. Zombies", category:"Tower Defense", url:"https://www.ea.com/games/plants-vs-zombies", desc:"Defend your garden with plant units; official versions may launch separately.", tags:["Tower Defense","Strategy"] },
+      { name:"Cursed Treasure", category:"Tower Defense", url:"https://www.kongregate.com/games/IriySoft/cursed-treasure", desc:"Protect your gems with towers, upgrades, and strategic placement.", tags:["Tower Defense","Strategy"] },
+      { name:"Desktop Tower Defense", category:"Tower Defense", url:"https://www.crazygames.com/game/desktop-tower-defense", desc:"A classic maze-building tower-defense concept; embedding may vary by host.", tags:["Tower Defense","Classic"] },
+      { name:"Bloons Monkey City", category:"Strategy", url:"https://www.ninjakiwi.com/", desc:"Build a city and defend it in the Bloons universe; check current availability.", tags:["Strategy","Tower Defense"] },
+      { name:"Idle Tower Defense", category:"Tower Defense", url:"https://www.crazygames.com/", desc:"Browse current browser-based idle tower-defense games on CrazyGames.", tags:["Tower Defense","Idle"] },
+      { name:"Idle TD: Heroes vs Zombies", category:"Tower Defense", url:"https://www.crazygames.com/", desc:"Idle tower defense with waves and upgrades; use the site to find current playable versions.", tags:["Tower Defense","Idle"] },
+      { name:"Infinitode 2", category:"Tower Defense", url:"https://infinitode.prineside.com/", desc:"A deep tower-defense game with extensive upgrades and endless progression.", tags:["Tower Defense","Strategy"] },
+      { name:"GemCraft", category:"Tower Defense", url:"https://www.gameinabottle.com/", desc:"Strategic gem-based tower defense with deep skill trees and long campaigns.", tags:["Tower Defense","Strategy"] },
+      { name:"Loop Hero", category:"Strategy", url:"https://www.devolverdigital.com/games/loop-hero", desc:"An auto-battling roguelite with incremental-feeling progression; separate game.", tags:["Strategy","RPG"] },
+      { name:"Idle Champions of the Forgotten Realms", category:"Strategy", url:"https://www.codenameentertainment.com/?page=idle_champions", desc:"Formation-based idle strategy with champions and automated battles.", tags:["Strategy","Idle"] },
+      { name:"NGU Idle (official site)", category:"Prestige", url:"https://www.ngu-idle.com/", desc:"Check the official NGU Idle site for current play options and links.", tags:["Prestige","RPG"] }
+    ];
+
+    const list = document.getElementById("game-list");
+    const search = document.getElementById("search");
+    const filterButtons = [...document.querySelectorAll("[data-filter]")];
+    let activeFilter = "All";
+    let selectedName = "Universal Paperclips";
+
+    function selectGame(game) {
+      selectedName = game.name;
+      document.getElementById("current-title").textContent = game.name;
+      document.getElementById("current-desc").textContent = game.desc;
+      document.getElementById("current-tag").textContent = game.category;
+      const frame = document.getElementById("player");
+      frame.src = game.url;
+      const open = document.getElementById("open-game");
+      open.href = game.url;
+      render();
+    }
+
+    function render() {
+      const query = search.value.trim().toLowerCase();
+      const filtered = games.filter(game => {
+        const matchesText = (game.name + " " + game.desc + " " + game.tags.join(" ")).toLowerCase().includes(query);
+        const matchesFilter = activeFilter === "All" || game.category === activeFilter || game.tags.includes(activeFilter);
+        return matchesText && matchesFilter;
+      });
+      list.replaceChildren();
+      document.getElementById("count").textContent = `${filtered.length} game${filtered.length === 1 ? "" : "s"}`;
+      if (!filtered.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "No games match that search.";
+        list.append(empty);
+        return;
+      }
+      filtered.forEach(game => {
+        const card = document.createElement("article");
+        card.className = "game-card" + (game.name === selectedName ? " selected" : "");
+        const top = document.createElement("div");
+        top.className = "game-top";
+        const title = document.createElement("div");
+        title.className = "game-title";
+        title.textContent = game.name;
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = game.category;
+        top.append(title, tag);
+        const desc = document.createElement("p");
+        desc.textContent = game.desc;
+        const actions = document.createElement("div");
+        actions.className = "card-actions";
+        const play = document.createElement("button");
+        play.type = "button";
+        play.textContent = "▶ Play here";
+        play.addEventListener("click", () => {
+          selectGame(game);
+          document.querySelector(".game-screen").scrollIntoView({behavior:"smooth", block:"start"});
+        });
+        const newTab = document.createElement("a");
+        newTab.className = "linkbtn";
+        newTab.href = game.url;
+        newTab.target = "_blank";
+        newTab.rel = "noopener noreferrer";
+        newTab.textContent = "↗ New tab";
+        actions.append(play, newTab);
+        card.append(top, desc, actions);
+        list.append(card);
+      });
+    }
+
+    filterButtons.forEach(button => button.addEventListener("click", () => {
+      activeFilter = button.dataset.filter;
+      filterButtons.forEach(item => item.classList.toggle("active", item === button));
+      render();
+    }));
+    search.addEventListener("input", render);
+    document.getElementById("reload-game").addEventListener("click", () => {
+      const frame = document.getElementById("player");
+      frame.src = frame.src;
+    });
+    render();
+  </script>
+</body>
+</html>
