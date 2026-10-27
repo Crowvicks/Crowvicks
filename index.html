@@ -1,0 +1,1076 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game Shelf</title>
+<style>
+  :root{
+    --bg:#0f1117;--panel:#181b24;--panel2:#212533;--text:#e8eaf0;--muted:#8a90a3;
+    --accent:#7c9cff;--accent2:#ffb86b;--good:#5fd39a;--bad:#ff6b6b;--radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+  header{padding:20px 16px 4px;text-align:center}
+  header h1{margin:0;font-size:1.8rem;letter-spacing:.5px}
+  header p{margin:4px 0 0;color:var(--muted);font-size:.95rem}
+  nav{padding:10px 16px;max-width:900px;margin:0 auto}
+  .group{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin-bottom:8px}
+  .group > span{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:1px;width:100%;text-align:center}
+  nav button{background:var(--panel);color:var(--text);border:1px solid var(--panel2);padding:8px 14px;border-radius:999px;cursor:pointer;font-size:.9rem}
+  nav button.active{background:var(--accent);color:#0b0d14;border-color:var(--accent);font-weight:600}
+  main{max-width:720px;margin:0 auto;padding:8px 16px 40px}
+  .game{display:none;background:var(--panel);border-radius:var(--radius);padding:20px;border:1px solid var(--panel2)}
+  .game.active{display:block}
+  h2{margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 16px;font-size:.9rem;line-height:1.4}
+  .btn{background:var(--panel2);color:var(--text);border:1px solid #2e3346;padding:10px 14px;border-radius:10px;cursor:pointer;font-size:.95rem}
+  .btn:hover:not(:disabled){border-color:var(--accent)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.sm{padding:6px 10px;font-size:.8rem}
+  .btn.on{border-color:var(--good);background:#21352b}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .stat{background:var(--panel2);padding:8px 12px;border-radius:10px;font-variant-numeric:tabular-nums;font-size:.9rem}
+  .win{color:var(--good);font-weight:600;min-height:1.4em;margin-top:12px;text-align:center}
+  .big{font-size:2.1rem;font-weight:700;font-variant-numeric:tabular-nums}
+  .center{text-align:center}
+  .reset{margin-top:18px;text-align:right}
+  .reset button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;text-decoration:underline}
+
+  /* clicker core */
+  .core{width:140px;height:140px;border-radius:50%;border:none;cursor:pointer;margin:12px auto;display:block;
+    background:radial-gradient(circle at 35% 35%,#fff6d8,#ffb86b 40%,#e2573b 80%);box-shadow:0 0 40px #ffb86b66;transition:transform .06s;
+    font-size:1rem;font-weight:700;color:#3a1408}
+  .core:active{transform:scale(.94)}
+  .core.blue{background:radial-gradient(circle at 35% 35%,#e0f7ff,#5ec8ff 40%,#3150d8 80%);box-shadow:0 0 40px #5ec8ff55;color:#06123a}
+  .core.green{width:110px;height:110px;background:radial-gradient(circle at 35% 35%,#eaffd8,#8fd46b 40%,#3b8a2e 80%);box-shadow:0 0 30px #8fd46b55;color:#0f2a08}
+
+  /* shop items */
+  .shop{display:grid;gap:8px;margin-top:16px}
+  .item{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--panel2);padding:10px 12px;border-radius:10px;border:1px solid transparent;cursor:pointer;text-align:left;color:var(--text);font-size:.92rem;width:100%}
+  .item:hover:not(:disabled){border-color:var(--accent2)}
+  .item:disabled{opacity:.45;cursor:not-allowed}
+  .item small{color:var(--muted);display:block;margin-top:2px}
+  .item .cost{color:var(--accent2);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  /* lemonade businesses */
+  .biz{display:flex;gap:12px;background:var(--panel2);padding:10px;border-radius:10px;align-items:center;margin-bottom:8px}
+  .biz.locked{opacity:.65}
+  .bizIcon{width:58px;height:58px;font-size:1.8rem;border-radius:12px;border:none;background:#2c3142;cursor:pointer;position:relative;flex-shrink:0}
+  .bizIcon:active{transform:scale(.94)}
+  .bizIcon .own{position:absolute;bottom:-5px;right:-5px;background:var(--accent);color:#0b0d14;font-size:.7rem;border-radius:999px;padding:1px 6px;font-weight:700}
+  .bizMain{flex:1;min-width:0}
+  .bizTop{display:flex;justify-content:space-between;font-size:.9rem;gap:8px}
+  .bizTop span{color:var(--good);font-variant-numeric:tabular-nums}
+  .bar{height:10px;background:#11131a;border-radius:99px;margin:6px 0;overflow:hidden}
+  .fill{height:100%;background:var(--good);width:0}
+  .bizBtns{display:flex;gap:6px;flex-wrap:wrap}
+
+  /* boards */
+  .board{display:grid;gap:8px;margin:0 auto;width:min(100%,360px);user-select:none;touch-action:manipulation}
+  .cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-variant-numeric:tabular-nums;padding:0}
+  #b2048{grid-template-columns:repeat(4,1fr);background:#2a2e3d;padding:8px;border-radius:var(--radius);touch-action:none}
+  #b2048 .cell{background:#3a3f52;font-size:1.5rem}
+  #lights{grid-template-columns:repeat(5,1fr)}
+  #lights .cell{background:#2a2e3d;cursor:pointer;border:none}
+  #lights .cell.on{background:var(--accent2);box-shadow:0 0 14px #ffb86b88}
+  #fifteen{grid-template-columns:repeat(4,1fr)}
+  #fifteen .cell{background:var(--accent);color:#0b0d14;font-size:1.4rem;cursor:pointer;border:none}
+  #fifteen .cell.blank{background:transparent;cursor:default}
+
+  /* garden */
+  #gPlots{grid-template-columns:repeat(4,1fr);width:min(100%,400px)}
+  .plot{background:#3b2a1e;border:none;border-radius:10px;font-size:1.8rem;cursor:pointer;flex-direction:column;color:var(--text);gap:2px}
+  .plot small{font-size:.65rem;color:#d9c7b0;font-weight:500}
+  .plot.ripe{box-shadow:0 0 0 2px var(--good) inset,0 0 12px #5fd39a55}
+  .crops{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;justify-content:center}
+  .crop{text-align:left;font-size:.85rem}
+  .crop small{color:var(--muted);font-size:.72rem}
+  .crop.sel{border-color:var(--good);background:#21352b}
+
+  /* minesweeper */
+  #msBoard{gap:3px;width:min(100%,440px)}
+  #msBoard .cell{background:#3a3f52;border:none;border-radius:4px;cursor:pointer;color:var(--text)}
+  #msBoard .cell.rev{background:#20243a;cursor:default}
+  #msBoard .cell.boom{background:var(--bad)}
+
+  /* sudoku */
+  #sdBoard{grid-template-columns:repeat(9,1fr);gap:0;border:2px solid #8a90a3;width:min(100%,420px);border-radius:6px;overflow:hidden}
+  #sdBoard .cell{border-radius:0;border:1px solid #2d3346;background:var(--panel2);font-size:1.2rem;cursor:pointer;color:var(--accent);font-weight:600}
+  #sdBoard .cell.given{color:var(--text);font-weight:700}
+  #sdBoard .cell.br{border-right:2px solid #8a90a3}
+  #sdBoard .cell.bb{border-bottom:2px solid #8a90a3}
+  #sdBoard .cell.peer{background:#262c40}
+  #sdBoard .cell.same{background:#303a60}
+  #sdBoard .cell.sel{background:#3d4c85}
+  #sdBoard .cell.bad{color:var(--bad)}
+  .pad{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:min(100%,420px);margin:12px auto 0}
+  .pad .btn{font-size:1.15rem;padding:10px 0}
+
+  #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--accent);color:#0b0d14;padding:12px 18px;border-radius:12px;font-weight:600;max-width:90vw;text-align:center;display:none;z-index:9;box-shadow:0 8px 30px #0008}
+  footer{text-align:center;color:var(--muted);font-size:.8rem;padding-bottom:24px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎮 Game Shelf</h1>
+  <p>Incremental & puzzle games. Progress saves in your browser, and idle games keep earning while you're away.</p>
+</header>
+<nav>
+  <div class="group"><span>Incremental</span>
+    <button data-g="forge">✨ Star Forge</button>
+    <button data-g="lemon">🍋 Lemonade Empire</button>
+    <button data-g="ants">🐜 Ant Colony</button>
+    <button data-g="clips">📎 Paperclips</button>
+    <button data-g="garden">🌱 Idle Garden</button>
+    <button data-g="bits">💾 Bit Miner</button>
+  </div>
+  <div class="group"><span>Puzzle</span>
+    <button data-g="g2048">🔢 2048</button>
+    <button data-g="mines">💣 Minesweeper</button>
+    <button data-g="sudoku">✏️ Sudoku</button>
+    <button data-g="lightsout">💡 Lights Out</button>
+    <button data-g="g15">🧩 15 Puzzle</button>
+  </div>
+</nav>
+<main>
+
+  <!-- STAR FORGE -->
+  <section class="game" id="forge">
+    <h2>✨ Star Forge</h2>
+    <p class="sub">Click the star to gather stardust. Buy machines that gather it for you.</p>
+    <div class="center"><div class="big" id="fDust">0</div><div class="sub" id="fRate" style="margin:0"></div></div>
+    <button class="core" id="fCore">CLICK</button>
+    <div class="shop" id="fShop"></div>
+    <div class="row" style="margin-top:14px"><span class="stat" id="fTotal"></span></div>
+    <div class="reset"><button id="fReset">Reset Star Forge</button></div>
+  </section>
+
+  <!-- LEMONADE -->
+  <section class="game" id="lemon">
+    <h2>🍋 Lemonade Empire</h2>
+    <p class="sub">Tap a business icon to run it. Hire a manager to run it forever. Every 25 owned doubles its speed.</p>
+    <div class="center"><div class="big" id="lCash">$0</div><div class="sub" id="lRate"></div></div>
+    <div id="lList"></div>
+    <div class="reset"><button id="lReset">Reset Lemonade Empire</button></div>
+  </section>
+
+  <!-- ANTS -->
+  <section class="game" id="ants">
+    <h2>🐜 Ant Colony</h2>
+    <p class="sub">Each tier produces the tier below it. Workers gather food, nurses raise workers, queens lay nurses… growth snowballs.</p>
+    <div class="center"><div class="big" id="aFood">0</div><div class="sub" id="aRate"></div></div>
+    <button class="core green" id="aForage">FORAGE</button>
+    <div class="shop" id="aList"></div>
+    <div class="reset"><button id="aReset">Reset Ant Colony</button></div>
+  </section>
+
+  <!-- PAPERCLIPS -->
+  <section class="game" id="clips">
+    <h2>📎 Paperclips</h2>
+    <p class="sub">Make clips from wire and sell them. Lower prices sell faster, higher prices earn more per clip. Find the sweet spot.</p>
+    <div class="center"><div class="big" id="pClips">0</div><div class="sub" style="margin:0 0 12px">paperclips made</div></div>
+    <div class="row">
+      <span class="stat">Funds: <b id="pFunds"></b></span>
+      <span class="stat">Unsold: <b id="pInv"></b></span>
+      <span class="stat">Wire: <b id="pWire"></b></span>
+    </div>
+    <div class="row">
+      <button class="btn sm" id="pDown">− 1¢</button>
+      <span class="stat">Price: <b id="pPrice"></b></span>
+      <button class="btn sm" id="pUp">+ 1¢</button>
+      <span class="stat">Demand: <b id="pDemand"></b></span>
+    </div>
+    <div class="row">
+      <button class="btn" id="pMake">📎 Make paperclip</button>
+      <span class="stat">Auto: <b id="pProd"></b></span>
+    </div>
+    <div class="shop" id="pShop"></div>
+    <div class="reset"><button id="pReset">Reset Paperclips</button></div>
+  </section>
+
+  <!-- GARDEN -->
+  <section class="game" id="garden">
+    <h2>🌱 Idle Garden</h2>
+    <p class="sub">Pick a seed, tap a plot to plant, tap again when ripe to harvest (it replants automatically). Pricier crops take longer but pay much more.</p>
+    <div class="center"><div class="big" id="gCoins">0</div><div class="sub">coins</div></div>
+    <div class="crops" id="gCrops"></div>
+    <div class="board" id="gPlots"></div>
+    <div class="shop" id="gShop"></div>
+    <div class="reset"><button id="gReset">Reset Idle Garden</button></div>
+  </section>
+
+  <!-- BIT MINER -->
+  <section class="game" id="bits">
+    <h2>💾 Bit Miner</h2>
+    <p class="sub">Mine data and build hardware. When progress slows, Reboot: you lose your hardware but gain Cores that permanently boost everything.</p>
+    <div class="center"><div class="big" id="bBytes">0 B</div><div class="sub" id="bRate" style="margin:0"></div></div>
+    <button class="core blue" id="bMine">MINE</button>
+    <div class="row" style="justify-content:center">
+      <span class="stat" id="bCores"></span>
+      <button class="btn" id="bReboot"></button>
+    </div>
+    <div class="shop" id="bShop"></div>
+    <div class="reset"><button id="bReset">Reset Bit Miner (including cores)</button></div>
+  </section>
+
+  <!-- 2048 -->
+  <section class="game" id="g2048">
+    <h2>🔢 2048</h2>
+    <p class="sub">Arrow keys / WASD, or swipe on the board. Merge tiles to reach 2048.</p>
+    <div class="row">
+      <span class="stat">Score: <b id="s2048">0</b></span>
+      <span class="stat">Best: <b id="best2048">0</b></span>
+      <button class="btn" id="new2048">New game</button>
+    </div>
+    <div class="board" id="b2048"></div>
+    <div class="win" id="msg2048"></div>
+  </section>
+
+  <!-- MINESWEEPER -->
+  <section class="game" id="mines">
+    <h2>💣 Minesweeper</h2>
+    <p class="sub">Reveal every safe square. Numbers count adjacent mines. Right-click (or use Flag mode) to flag. Tap a number whose flags are all placed to clear around it. First tap is always safe.</p>
+    <div class="row">
+      <button class="btn sm msLv" data-lv="easy">Easy</button>
+      <button class="btn sm msLv" data-lv="medium">Medium</button>
+      <button class="btn sm msLv" data-lv="hard">Hard</button>
+      <button class="btn sm" id="msFlag">🚩 Flag mode: off</button>
+    </div>
+    <div class="row">
+      <span class="stat">Mines left: <b id="msLeft"></b></span>
+      <span class="stat">Time: <b id="msTime">0s</b></span>
+      <span class="stat">Best: <b id="msBest">–</b></span>
+    </div>
+    <div class="board" id="msBoard"></div>
+    <div class="win" id="msMsg"></div>
+  </section>
+
+  <!-- SUDOKU -->
+  <section class="game" id="sudoku">
+    <h2>✏️ Sudoku</h2>
+    <p class="sub">Fill each row, column and 3×3 box with 1–9. Tap a cell, then a number (or type it). Conflicts show in red. Every puzzle has exactly one solution.</p>
+    <div class="row">
+      <button class="btn sm sdLv" data-d="easy">New Easy</button>
+      <button class="btn sm sdLv" data-d="medium">New Medium</button>
+      <button class="btn sm sdLv" data-d="hard">New Hard</button>
+      <span class="stat">Time: <b id="sdTime">0s</b></span>
+    </div>
+    <div class="board" id="sdBoard"></div>
+    <div class="pad" id="sdPad"></div>
+    <div class="win" id="sdMsg"></div>
+  </section>
+
+  <!-- LIGHTS OUT -->
+  <section class="game" id="lightsout">
+    <h2>💡 Lights Out</h2>
+    <p class="sub">Tapping a light toggles it and its neighbors. Turn every light off. Levels get harder.</p>
+    <div class="row">
+      <span class="stat">Moves: <b id="moves">0</b></span>
+      <span class="stat">Level: <b id="lvl">1</b></span>
+      <button class="btn" id="newLights">Restart level</button>
+    </div>
+    <div class="board" id="lights"></div>
+    <div class="win" id="msgLights"></div>
+  </section>
+
+  <!-- 15 PUZZLE -->
+  <section class="game" id="g15">
+    <h2>🧩 15 Puzzle</h2>
+    <p class="sub">Slide tiles into the empty space to put them in order 1–15.</p>
+    <div class="row">
+      <span class="stat">Moves: <b id="m15">0</b></span>
+      <span class="stat">Time: <b id="t15">0s</b></span>
+      <button class="btn" id="new15">Shuffle</button>
+    </div>
+    <div class="board" id="fifteen"></div>
+    <div class="win" id="msg15"></div>
+  </section>
+
+</main>
+<div id="toast"></div>
+<footer>Made with plain HTML, CSS & JS</footer>
+
+<script>
+/* ================= helpers ================= */
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const SUF = ['K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc','Ud','Dd','Td'];
+function fmt(n){
+  if (!isFinite(n)) return '∞';
+  if (n < 1000) return (n < 100 && n % 1 > 0.001) ? n.toFixed(1) : Math.floor(n).toString();
+  let i = -1; while (n >= 1000 && i < SUF.length - 1){ n /= 1000; i++; }
+  return n.toFixed(2) + SUF[i];
+}
+const money = n => '$' + (n < 1000 ? n.toFixed(2) : fmt(n));
+function fmtTime(s){
+  if (s < 10) return s.toFixed(1).replace('.0','') + 's';
+  if (s < 60) return Math.round(s) + 's';
+  if (s < 3600) return Math.floor(s/60) + 'm ' + Math.floor(s%60) + 's';
+  return Math.floor(s/3600) + 'h ' + Math.floor(s%3600/60) + 'm';
+}
+function item(parent, title, fn){
+  const b = document.createElement('button');
+  b.className = 'item';
+  b.innerHTML = `<span><b>${title}</b><small></small></span><span class="cost"></span>`;
+  b.onclick = fn; parent.appendChild(b); return b;
+}
+function setItem(b, can, small, label){
+  b.disabled = !can;
+  b.querySelector('small').textContent = small;
+  b.querySelector('.cost').textContent = label;
+}
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', 4500);
+}
+const IDLE = {};   // idle games: {tick(dt), render(), save()}
+let current = 'forge';
+
+/* ================= STAR FORGE ================= */
+(() => {
+  const GENS = [
+    {name:'Dust Probe',    base:15,     rate:0.1,  desc:'Scoops up stray particles'},
+    {name:'Satellite',     base:100,    rate:1,    desc:'Orbits and collects'},
+    {name:'Space Station', base:1100,   rate:8,    desc:'A crew of dust miners'},
+    {name:'Nebula Siphon', base:12000,  rate:47,   desc:'Drinks from gas clouds'},
+    {name:'Dyson Ring',    base:130000, rate:260,  desc:'Wraps a star in collectors'},
+    {name:'Galaxy Engine', base:1.4e6,  rate:1400, desc:'Harvests an entire galaxy'},
+    {name:'Universe Loom', base:2e7,    rate:7800, desc:'Weaves dust from spacetime'},
+  ];
+  const def = () => ({dust:0, total:0, gens:GENS.map(()=>0), click:0, mult:0});
+  let F = Object.assign(def(), store.get('forge', {}));
+  while (F.gens.length < GENS.length) F.gens.push(0);
+  const genCost = i => GENS[i].base * Math.pow(1.15, F.gens[i]);
+  const clickCost = () => 50 * Math.pow(4, F.click);
+  const multCost = () => 5000 * Math.pow(10, F.mult);
+  const mv = () => Math.pow(2, F.mult);
+  const rate = () => GENS.reduce((s,g,i) => s + g.rate*F.gens[i], 0) * mv();
+  const perClick = () => Math.pow(2, F.click) * mv() + rate() * 0.02;
+  const gain = x => { F.dust += x; F.total += x; };
+  const buy = (c, f) => { if (F.dust >= c){ F.dust -= c; f(); } };
+  const shop = $('fShop');
+  const bc = item(shop, '👆 Stronger Clicks', () => buy(clickCost(), () => F.click++));
+  const bm = item(shop, '🌌 Cosmic Multiplier', () => buy(multCost(), () => F.mult++));
+  const bg = GENS.map((g,i) => item(shop, g.name, () => buy(genCost(i), () => F.gens[i]++)));
+  $('fCore').onclick = () => gain(perClick());
+  $('fReset').onclick = () => { if (confirm('Reset Star Forge?')) F = def(); };
+  IDLE.forge = {
+    tick: dt => gain(rate() * dt),
+    save: () => store.set('forge', F),
+    render(){
+      $('fDust').textContent = fmt(F.dust) + ' ✨';
+      $('fRate').textContent = `${fmt(rate())} / sec · ${fmt(perClick())} per click`;
+      $('fTotal').textContent = 'Total gathered: ' + fmt(F.total);
+      setItem(bc, F.dust >= clickCost(), `Doubles base click power (level ${F.click})`, fmt(clickCost()));
+      setItem(bm, F.dust >= multCost(), `Doubles ALL production (now ×${fmt(mv())})`, fmt(multCost()));
+      GENS.forEach((g,i) => {
+        bg[i].style.display = (i === 0 || F.gens[i] > 0 || F.total >= g.base * 0.5) ? '' : 'none';
+        setItem(bg[i], F.dust >= genCost(i), `${g.desc} · owned ${F.gens[i]} · +${fmt(g.rate*mv())}/s each`, fmt(genCost(i)));
+      });
+    }
+  };
+})();
+
+/* ================= LEMONADE EMPIRE ================= */
+(() => {
+  const B = [
+    {n:'Lemonade Stand',  e:'🍋', c:4,       r:1,       t:1},
+    {n:'Newspaper Route', e:'📰', c:60,      r:60,      t:3},
+    {n:'Car Wash',        e:'🚗', c:720,     r:540,     t:6},
+    {n:'Pizza Shop',      e:'🍕', c:8640,    r:4320,    t:12},
+    {n:'Donut Shop',      e:'🍩', c:103680,  r:51840,   t:24},
+    {n:'Shrimp Boat',     e:'🦐', c:1.24e6,  r:622080,  t:96},
+    {n:'Hockey Team',     e:'🏒', c:1.49e7,  r:7.46e6,  t:384},
+    {n:'Movie Studio',    e:'🎬', c:1.79e8,  r:8.96e7,  t:1536},
+  ];
+  const def = () => ({cash:0, own:B.map((_,i)=>i?0:1), prog:B.map(()=>0), run:B.map(()=>false), mgr:B.map(()=>false)});
+  let S = Object.assign(def(), store.get('lemon', {}));
+  const cost = i => B[i].c * Math.pow(1.12, S.own[i]);
+  const mgrCost = i => B[i].c * 250;
+  const spd = i => Math.pow(2, Math.floor(S.own[i] / 25));
+  const list = $('lList');
+  const rows = B.map((b,i) => {
+    const r = document.createElement('div'); r.className = 'biz';
+    r.innerHTML = `<button class="bizIcon">${b.e}<span class="own"></span></button>
+      <div class="bizMain"><div class="bizTop"><b>${b.n}</b><span class="earn"></span></div>
+      <div class="bar"><div class="fill"></div></div>
+      <div class="bizBtns"><button class="btn sm buy"></button><button class="btn sm mgr"></button></div></div>`;
+    r.querySelector('.bizIcon').onclick = () => { if (S.own[i] > 0) S.run[i] = true; };
+    r.querySelector('.buy').onclick = () => { const c = cost(i); if (S.cash >= c){ S.cash -= c; S.own[i]++; } };
+    r.querySelector('.mgr').onclick = () => { const c = mgrCost(i); if (!S.mgr[i] && S.own[i] > 0 && S.cash >= c){ S.cash -= c; S.mgr[i] = true; } };
+    list.appendChild(r); return r;
+  });
+  $('lReset').onclick = () => { if (confirm('Reset Lemonade Empire?')) S = def(); };
+  IDLE.lemon = {
+    tick(dt){
+      B.forEach((b,i) => {
+        if (S.own[i] > 0 && (S.run[i] || S.mgr[i])){
+          S.prog[i] += dt * spd(i) / b.t;
+          if (S.prog[i] >= 1){
+            const cyc = S.mgr[i] ? Math.floor(S.prog[i]) : 1;
+            S.cash += cyc * b.r * S.own[i];
+            S.prog[i] = S.mgr[i] ? S.prog[i] - cyc : 0;
+            S.run[i] = false;
+          }
+        }
+      });
+    },
+    save: () => store.set('lemon', S),
+    render(){
+      $('lCash').textContent = money(S.cash);
+      const ps = B.reduce((s,b,i) => s + (S.mgr[i] ? b.r * S.own[i] * spd(i) / b.t : 0), 0);
+      $('lRate').textContent = money(ps) + ' / sec from managers';
+      let show = true;
+      B.forEach((b,i) => {
+        const r = rows[i];
+        r.style.display = show ? '' : 'none';
+        if (S.own[i] === 0) show = false;
+        r.classList.toggle('locked', S.own[i] === 0);
+        r.querySelector('.own').textContent = S.own[i];
+        const cyc = b.t / spd(i);
+        r.querySelector('.earn').textContent = `${money(b.r * Math.max(1, S.own[i]))} / ${fmtTime(cyc)}`;
+        const active = S.mgr[i] || S.run[i];
+        r.querySelector('.fill').style.width = (active && cyc < 0.3 ? 100 : S.prog[i] * 100) + '%';
+        const by = r.querySelector('.buy');
+        by.textContent = 'Buy ' + money(cost(i)); by.disabled = S.cash < cost(i);
+        const m = r.querySelector('.mgr');
+        m.textContent = S.mgr[i] ? 'Manager ✓' : 'Hire manager ' + money(mgrCost(i));
+        m.disabled = S.mgr[i] || S.own[i] === 0 || S.cash < mgrCost(i);
+      });
+    }
+  };
+})();
+
+/* ================= ANT COLONY ================= */
+(() => {
+  const T = [
+    {n:'Worker Ants',    e:'🐜', c:10,   g:1.15, p:1,    d:'Gather food'},
+    {n:'Nurses',         e:'🍼', c:150,  g:1.2,  p:0.25, d:'Raise worker ants'},
+    {n:'Queens',         e:'👑', c:4000, g:1.25, p:0.15, d:'Lay nurse eggs'},
+    {n:'Colonies',       e:'🏰', c:2e5,  g:1.3,  p:0.08, d:'Raise new queens'},
+    {n:'Super-Colonies', e:'🌍', c:2e7,  g:1.35, p:0.04, d:'Found new colonies'},
+    {n:'Ant Planets',    e:'🪐', c:5e9,  g:1.4,  p:0.02, d:'Seed super-colonies'},
+  ];
+  const def = () => ({food:10, amt:T.map(()=>0), bought:T.map(()=>0), pher:0});
+  let S = Object.assign(def(), store.get('ants', {}));
+  while (S.amt.length < T.length){ S.amt.push(0); S.bought.push(0); }
+  const cost = i => T[i].c * Math.pow(T[i].g, S.bought[i]);
+  const boost = () => Math.pow(2, S.pher);
+  const pherCost = () => 500 * Math.pow(15, S.pher);
+  const list = $('aList');
+  const bp = item(list, '🧪 Pheromone Trails', () => { const c = pherCost(); if (S.food >= c){ S.food -= c; S.pher++; } });
+  const bt = T.map((t,i) => item(list, `${t.e} ${t.n}`, () => {
+    const c = cost(i); if (S.food >= c){ S.food -= c; S.amt[i]++; S.bought[i]++; }
+  }));
+  $('aForage').onclick = () => { S.food += boost(); };
+  $('aReset').onclick = () => { if (confirm('Reset Ant Colony?')) S = def(); };
+  IDLE.ants = {
+    tick(dt){
+      const b = boost();
+      S.food += S.amt[0] * T[0].p * b * dt;
+      for (let i = 1; i < T.length; i++) S.amt[i-1] += S.amt[i] * T[i].p * b * dt;
+    },
+    save: () => store.set('ants', S),
+    render(){
+      const b = boost();
+      $('aFood').textContent = fmt(S.food) + ' 🍯';
+      $('aRate').textContent = fmt(S.amt[0] * T[0].p * b) + ' food / sec';
+      setItem(bp, S.food >= pherCost(), `Doubles every ant's output (now ×${fmt(b)})`, fmt(pherCost()));
+      T.forEach((t,i) => {
+        bt[i].style.display = (i === 0 || S.bought[i-1] > 0 || S.amt[i] > 0) ? '' : 'none';
+        const out = S.amt[i] * t.p * b;
+        const what = i === 0 ? 'food' : T[i-1].n.toLowerCase();
+        setItem(bt[i], S.food >= cost(i), `${t.d} · have ${fmt(S.amt[i])} · +${fmt(out)} ${what}/s`, fmt(cost(i)));
+      });
+    }
+  };
+})();
+
+/* ================= PAPERCLIPS ================= */
+(() => {
+  const def = () => ({clips:0, total:0, funds:0, wire:1000, wireCost:15, price:0.25, auto:0, mega:0, mkt:0, autoWire:false});
+  let S = Object.assign(def(), store.get('clips', {}));
+  const autoCost = () => 5 * Math.pow(1.1, S.auto);
+  const megaCost = () => 500 * Math.pow(1.07, S.mega);
+  const mktCost = () => 100 * Math.pow(2, S.mkt);
+  const AW = 250;
+  const sellRate = () => 1.2 * Math.pow(0.25 / S.price, 2) * Math.pow(1.3, S.mkt);
+  const prodRate = () => S.auto + S.mega * 25;
+  const make = n => { const m = Math.min(S.wire, n); S.wire -= m; S.clips += m; S.total += m; };
+  $('pMake').onclick = () => make(1);
+  $('pDown').onclick = () => { S.price = Math.max(0.01, Math.round((S.price - 0.01) * 100) / 100); };
+  $('pUp').onclick = () => { S.price = Math.round((S.price + 0.01) * 100) / 100; };
+  const shop = $('pShop');
+  const bw = item(shop, '🧵 Buy Wire', () => { if (S.funds >= S.wireCost){ S.funds -= S.wireCost; S.wire += 1000; } });
+  const ba = item(shop, '🤖 AutoClipper', () => { const c = autoCost(); if (S.funds >= c){ S.funds -= c; S.auto++; } });
+  const bmg = item(shop, '🏭 MegaClipper', () => { const c = megaCost(); if (S.funds >= c){ S.funds -= c; S.mega++; } });
+  const bmk = item(shop, '📣 Marketing', () => { const c = mktCost(); if (S.funds >= c){ S.funds -= c; S.mkt++; } });
+  const baw = item(shop, '🛒 WireBuyer', () => { if (!S.autoWire && S.funds >= AW){ S.funds -= AW; S.autoWire = true; } });
+  $('pReset').onclick = () => { if (confirm('Reset Paperclips?')) S = def(); };
+  IDLE.clips = {
+    tick(dt){
+      make(prodRate() * dt);
+      const s = Math.min(S.clips, sellRate() * dt);
+      S.clips -= s; S.funds += s * S.price;
+      S.wireCost = Math.min(40, Math.max(8, S.wireCost + (Math.random() - 0.5) * 1.5 * dt));
+      if (S.autoWire && S.wire < 500 && S.funds >= S.wireCost){ S.funds -= S.wireCost; S.wire += 1000; }
+    },
+    save: () => store.set('clips', S),
+    render(){
+      $('pClips').textContent = fmt(Math.floor(S.total));
+      $('pFunds').textContent = money(S.funds);
+      $('pInv').textContent = fmt(Math.floor(S.clips));
+      $('pWire').textContent = fmt(Math.floor(S.wire)) + ' in';
+      $('pPrice').textContent = money(S.price);
+      $('pDemand').textContent = fmt(sellRate()) + '/s';
+      $('pProd').textContent = fmt(prodRate()) + ' clips/s';
+      $('pMake').disabled = S.wire < 1;
+      setItem(bw, S.funds >= S.wireCost, '1,000 inches · price drifts over time', money(S.wireCost));
+      setItem(ba, S.funds >= autoCost(), `Makes 1 clip/sec · owned ${S.auto}`, money(autoCost()));
+      bmg.style.display = (S.total >= 2000 || S.mega > 0) ? '' : 'none';
+      setItem(bmg, S.funds >= megaCost(), `Makes 25 clips/sec · owned ${S.mega}`, money(megaCost()));
+      setItem(bmk, S.funds >= mktCost(), `+30% demand · level ${S.mkt}`, money(mktCost()));
+      baw.style.display = (S.total >= 500 || S.autoWire) ? '' : 'none';
+      setItem(baw, !S.autoWire && S.funds >= AW, 'Automatically buys wire when you run low', S.autoWire ? 'Owned ✓' : money(AW));
+    }
+  };
+})();
+
+/* ================= IDLE GARDEN ================= */
+(() => {
+  const C = [
+    {n:'Carrot',       e:'🥕', s:1,     t:5,   v:3},
+    {n:'Tomato',       e:'🍅', s:10,    t:20,  v:32},
+    {n:'Pumpkin',      e:'🎃', s:100,   t:60,  v:360},
+    {n:'Golden Apple', e:'🍎', s:1500,  t:300, v:6500},
+    {n:'Star Fruit',   e:'⭐', s:25000, t:900, v:120000},
+  ];
+  const MAXP = 16, GARD = 400;
+  const def = () => ({coins:5, plots:[{c:-1,t:0},{c:-1,t:0}], sel:0, fert:0, gard:false});
+  let S = Object.assign(def(), store.get('garden', {}));
+  const gt = c => C[c].t / Math.pow(1.5, S.fert);
+  const plotCost = () => 20 * Math.pow(2.5, S.plots.length - 2);
+  const fertCost = () => 60 * Math.pow(6, S.fert);
+  const plant = (p, c) => {
+    if (S.coins >= C[c].s){ S.coins -= C[c].s; p.c = c; p.t = 0; return true; }
+    p.c = -1; p.t = 0; return false;
+  };
+  const cropsEl = $('gCrops'), plotsEl = $('gPlots');
+  const cropBtns = C.map((c,i) => {
+    const b = document.createElement('button'); b.className = 'btn crop';
+    b.onclick = () => { S.sel = i; IDLE.garden.render(); };
+    cropsEl.appendChild(b); return b;
+  });
+  let built = 0;
+  function buildPlots(){
+    plotsEl.innerHTML = '';
+    S.plots.forEach((p,i) => {
+      const b = document.createElement('button'); b.className = 'cell plot';
+      b.onclick = () => {
+        const p = S.plots[i];
+        if (p.c < 0) plant(p, S.sel);
+        else if (p.t >= gt(p.c)){ const c = p.c; S.coins += C[c].v; plant(p, c); }
+        IDLE.garden.render();
+      };
+      plotsEl.appendChild(b);
+    });
+    built = S.plots.length;
+  }
+  const shop = $('gShop');
+  const bpl = item(shop, '🟫 New Plot', () => { const c = plotCost(); if (S.plots.length < MAXP && S.coins >= c){ S.coins -= c; S.plots.push({c:-1,t:0}); } });
+  const bf = item(shop, '💩 Fertilizer', () => { const c = fertCost(); if (S.coins >= c){ S.coins -= c; S.fert++; } });
+  const bgd = item(shop, '🧑‍🌾 Hire Gardener', () => { if (!S.gard && S.coins >= GARD){ S.coins -= GARD; S.gard = true; } });
+  $('gReset').onclick = () => { if (confirm('Reset Idle Garden?')){ S = def(); buildPlots(); } };
+  IDLE.garden = {
+    tick(dt){
+      S.plots.forEach(p => {
+        if (p.c < 0) return;
+        p.t += dt;
+        const g = gt(p.c);
+        if (S.gard && p.t >= g){
+          const c = p.c, carry = p.t - g;
+          S.coins += C[c].v;
+          if (plant(p, c)) p.t = Math.min(carry, g);
+        }
+      });
+    },
+    save: () => store.set('garden', S),
+    render(){
+      if (built !== S.plots.length) buildPlots();
+      $('gCoins').textContent = fmt(S.coins) + ' 🪙';
+      cropBtns.forEach((b,i) => {
+        const c = C[i];
+        b.classList.toggle('sel', S.sel === i);
+        b.innerHTML = `<b>${c.e} ${c.n}</b><br><small>Seed ${fmt(c.s)} · Sells ${fmt(c.v)} · ${fmtTime(gt(i))}</small>`;
+      });
+      [...plotsEl.children].forEach((b,i) => {
+        const p = S.plots[i];
+        if (p.c < 0){ b.classList.remove('ripe'); b.innerHTML = `🟫<small>plant ${C[S.sel].e}</small>`; return; }
+        const g = gt(p.c);
+        if (p.t >= g){ b.classList.add('ripe'); b.innerHTML = `${C[p.c].e}<small>harvest</small>`; }
+        else { b.classList.remove('ripe'); b.innerHTML = `🌱<small>${fmtTime(g - p.t)}</small>`; }
+      });
+      bpl.style.display = S.plots.length < MAXP ? '' : 'none';
+      setItem(bpl, S.coins >= plotCost(), `More room to grow · ${S.plots.length}/${MAXP} plots`, fmt(plotCost()));
+      setItem(bf, S.coins >= fertCost(), `Crops grow 50% faster · level ${S.fert}`, fmt(fertCost()));
+      setItem(bgd, !S.gard && S.coins >= GARD, 'Auto-harvests and replants ripe crops, even while you are away', S.gard ? 'Hired ✓' : fmt(GARD));
+    }
+  };
+  buildPlots();
+})();
+
+/* ================= BIT MINER (prestige) ================= */
+(() => {
+  const U = ['B','KB','MB','GB','TB','PB','EB','ZB','YB','RB','QB'];
+  const fb = n => { let i = 0; while (n >= 1000 && i < U.length - 1){ n /= 1000; i++; } return (i ? n.toFixed(2) : Math.floor(n)) + ' ' + U[i]; };
+  const G = [
+    {n:'Script',         e:'📜', c:10,   r:0.5},
+    {n:'Bot',            e:'🤖', c:120,  r:4},
+    {n:'Server',         e:'🖥️', c:1500, r:30},
+    {n:'Data Center',    e:'🏢', c:2e4,  r:250},
+    {n:'Quantum Rig',    e:'⚛️', c:3e5,  r:2000},
+    {n:'AI Cluster',     e:'🧠', c:5e6,  r:18000},
+    {n:'Dyson Computer', e:'☀️', c:1e8,  r:200000},
+  ];
+  const def = () => ({bytes:0, run:0, g:G.map(()=>0), click:0, cores:0});
+  let S = Object.assign(def(), store.get('bits', {}));
+  const mult = () => 1 + 0.25 * S.cores;
+  const cost = i => G[i].c * Math.pow(1.15, S.g[i]);
+  const clickCost = () => 25 * Math.pow(5, S.click);
+  const rate = () => G.reduce((s,g,i) => s + g.r * S.g[i], 0) * mult();
+  const perClick = () => Math.pow(2, S.click) * mult();
+  const gain = x => { S.bytes += x; S.run += x; };
+  const coreGain = () => Math.floor(Math.sqrt(S.run / 1e5));
+  $('bMine').onclick = () => gain(perClick());
+  const shop = $('bShop');
+  const bc = item(shop, '⌨️ Faster Typing', () => { const c = clickCost(); if (S.bytes >= c){ S.bytes -= c; S.click++; } });
+  const bg = G.map((g,i) => item(shop, `${g.e} ${g.n}`, () => { const c = cost(i); if (S.bytes >= c){ S.bytes -= c; S.g[i]++; } }));
+  $('bReboot').onclick = () => {
+    const g = coreGain(); if (g < 1) return;
+    if (!confirm(`Reboot? You'll lose your data and hardware but gain ${g} Core${g>1?'s':''} (+${g*25}% production forever).`)) return;
+    S.cores += g; S.bytes = 0; S.run = 0; S.g = G.map(()=>0); S.click = 0;
+  };
+  $('bReset').onclick = () => { if (confirm('Fully reset Bit Miner, including cores?')) S = def(); };
+  IDLE.bits = {
+    tick: dt => gain(rate() * dt),
+    save: () => store.set('bits', S),
+    render(){
+      $('bBytes').textContent = fb(S.bytes);
+      $('bRate').textContent = `${fb(rate())}/s · ${fb(perClick())} per click`;
+      $('bCores').textContent = `🔩 ${S.cores} cores (+${S.cores*25}%)`;
+      const g = coreGain(), rb = $('bReboot');
+      rb.disabled = g < 1;
+      rb.textContent = g >= 1 ? `🔄 Reboot for +${g} core${g>1?'s':''}` : `🔄 Reboot at ${fb(1e5)} mined this run`;
+      setItem(bc, S.bytes >= clickCost(), `Doubles bytes per click (level ${S.click})`, fb(clickCost()));
+      G.forEach((gg,i) => {
+        bg[i].style.display = (i === 0 || S.g[i] > 0 || S.run >= gg.c * 0.4 || S.g[i-1] > 0) ? '' : 'none';
+        setItem(bg[i], S.bytes >= cost(i), `owned ${S.g[i]} · +${fb(gg.r * mult())}/s each`, fb(cost(i)));
+      });
+    }
+  };
+})();
+
+/* ================= 2048 ================= */
+(() => {
+  const COLORS = {2:'#eee4da',4:'#ede0c8',8:'#f2b179',16:'#f59563',32:'#f67c5f',64:'#f65e3b',128:'#edcf72',256:'#edcc61',512:'#edc850',1024:'#edc53f',2048:'#edc22e'};
+  let G = store.get('g2048', null), best = store.get('best2048', 0);
+  const el = $('b2048');
+  for (let i = 0; i < 16; i++){ const c = document.createElement('div'); c.className = 'cell'; el.appendChild(c); }
+  function addTile(){
+    const empty = G.grid.map((v,i) => v ? null : i).filter(i => i !== null);
+    if (empty.length) G.grid[empty[Math.floor(Math.random()*empty.length)]] = Math.random() < 0.9 ? 2 : 4;
+  }
+  function newGame(){ G = {grid:Array(16).fill(0), score:0, won:false}; addTile(); addTile(); render(); }
+  function lineIdx(dir, i){
+    const idx = [0,1,2,3].map(j => dir === 'L' || dir === 'R' ? i*4 + j : j*4 + i);
+    return dir === 'R' || dir === 'D' ? idx.reverse() : idx;
+  }
+  function canMove(){
+    if (G.grid.includes(0)) return true;
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++){
+      const v = G.grid[r*4+c];
+      if (c < 3 && v === G.grid[r*4+c+1]) return true;
+      if (r < 3 && v === G.grid[(r+1)*4+c]) return true;
+    }
+    return false;
+  }
+  function move(dir){
+    let moved = false;
+    for (let i = 0; i < 4; i++){
+      const idx = lineIdx(dir, i);
+      const vals = idx.map(k => G.grid[k]).filter(v => v);
+      const out = [];
+      for (let j = 0; j < vals.length; j++){
+        if (vals[j] === vals[j+1]){ const m = vals[j]*2; out.push(m); G.score += m; if (m === 2048) G.won = true; j++; }
+        else out.push(vals[j]);
+      }
+      while (out.length < 4) out.push(0);
+      idx.forEach((k,j) => { if (G.grid[k] !== out[j]){ moved = true; G.grid[k] = out[j]; } });
+    }
+    if (moved){ addTile(); render(); }
+  }
+  function render(){
+    [...el.children].forEach((c,i) => {
+      const v = G.grid[i];
+      c.textContent = v || '';
+      c.style.background = v ? (COLORS[v] || '#3c3a32') : '';
+      c.style.color = v > 4 ? '#fff' : '#776e65';
+      c.style.fontSize = v >= 1024 ? '1.1rem' : v >= 128 ? '1.3rem' : '1.5rem';
+    });
+    $('s2048').textContent = G.score;
+    if (G.score > best){ best = G.score; store.set('best2048', best); }
+    $('best2048').textContent = best;
+    $('msg2048').textContent = !canMove() ? 'No moves left — game over!' : G.won ? '🎉 You hit 2048! Keep going?' : '';
+    store.set('g2048', G);
+  }
+  $('new2048').onclick = newGame;
+  document.addEventListener('keydown', e => {
+    if (current !== 'g2048') return;
+    const d = {ArrowLeft:'L',ArrowRight:'R',ArrowUp:'U',ArrowDown:'D',a:'L',d:'R',w:'U',s:'D'}[e.key];
+    if (d){ e.preventDefault(); move(d); }
+  });
+  let ts = null;
+  el.addEventListener('touchstart', e => { ts = [e.touches[0].clientX, e.touches[0].clientY]; }, {passive:true});
+  el.addEventListener('touchend', e => {
+    if (!ts) return;
+    const dx = e.changedTouches[0].clientX - ts[0], dy = e.changedTouches[0].clientY - ts[1];
+    if (Math.max(Math.abs(dx), Math.abs(dy)) > 25) move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U'));
+    ts = null;
+  });
+  G ? render() : newGame();
+})();
+
+/* ================= MINESWEEPER ================= */
+(() => {
+  const LV = {easy:[9,10], medium:[12,24], hard:[14,40]};
+  const el = $('msBoard');
+  let M, flagMode = false;
+  const nb = i => {
+    const r = Math.floor(i / M.n), c = i % M.n, o = [];
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++){
+      if (!dr && !dc) continue;
+      const rr = r + dr, cc = c + dc;
+      if (rr >= 0 && rr < M.n && cc >= 0 && cc < M.n) o.push(rr * M.n + cc);
+    }
+    return o;
+  };
+  function newGame(lv){
+    const [n, m] = LV[lv];
+    M = {lv, n, m, mine:Array(n*n).fill(false), rev:Array(n*n).fill(false), flag:Array(n*n).fill(false), cnt:[], started:false, over:false, start:0, boom:-1, time:0};
+    el.style.gridTemplateColumns = `repeat(${n},1fr)`;
+    el.style.fontSize = n > 12 ? '.8rem' : n > 9 ? '.95rem' : '1.1rem';
+    el.innerHTML = '';
+    for (let i = 0; i < n*n; i++){
+      const b = document.createElement('button'); b.className = 'cell';
+      b.onclick = () => act(i, flagMode);
+      b.oncontextmenu = e => { e.preventDefault(); act(i, true); };
+      el.appendChild(b);
+    }
+    document.querySelectorAll('.msLv').forEach(b => b.classList.toggle('on', b.dataset.lv === lv));
+    const best = store.get('msBest', {})[lv];
+    $('msBest').textContent = best ? best + 's' : '–';
+    $('msMsg').textContent = ''; $('msTime').textContent = '0s';
+    render();
+  }
+  function place(safe){
+    const banned = new Set([safe, ...nb(safe)]);
+    let k = 0;
+    while (k < M.m){
+      const i = Math.floor(Math.random() * M.n * M.n);
+      if (!M.mine[i] && !banned.has(i)){ M.mine[i] = true; k++; }
+    }
+    M.cnt = M.mine.map((_,i) => nb(i).filter(j => M.mine[j]).length);
+  }
+  function open(i){
+    const st = [i];
+    while (st.length){
+      const j = st.pop();
+      if (M.rev[j] || M.flag[j]) continue;
+      M.rev[j] = true;
+      if (M.mine[j]){ lose(j); return; }
+      if (M.cnt[j] === 0) nb(j).forEach(k => { if (!M.rev[k]) st.push(k); });
+    }
+  }
+  function lose(j){
+    M.over = true; M.boom = j;
+    M.mine.forEach((m,i) => { if (m) M.rev[i] = true; });
+    $('msMsg').style.color = 'var(--bad)';
+    $('msMsg').textContent = '💥 Boom! Pick a difficulty to try again.';
+  }
+  function win(){
+    M.over = true;
+    M.mine.forEach((m,i) => { if (m) M.flag[i] = true; });
+    const t = Math.round((Date.now() - M.start) / 1000);
+    const bests = store.get('msBest', {});
+    if (!bests[M.lv] || t < bests[M.lv]){ bests[M.lv] = t; store.set('msBest', bests); $('msBest').textContent = t + 's'; }
+    $('msMsg').style.color = 'var(--good)';
+    $('msMsg').textContent = `🎉 Cleared in ${t}s!`;
+  }
+  function act(i, flag){
+    if (M.over) return;
+    if (flag){ if (!M.rev[i]) M.flag[i] = !M.flag[i]; render(); return; }
+    if (M.flag[i]) return;
+    if (!M.started){ place(i); M.started = true; M.start = Date.now(); }
+    if (M.rev[i]){
+      const ns = nb(i);
+      if (M.cnt[i] > 0 && ns.filter(k => M.flag[k]).length === M.cnt[i])
+        ns.forEach(k => { if (!M.over && !M.flag[k] && !M.rev[k]) open(k); });
+    } else open(i);
+    if (!M.over && M.rev.filter(Boolean).length === M.n * M.n - M.m) win();
+    render();
+  }
+  const NC = ['', '#7c9cff', '#5fd39a', '#ff6b6b', '#c38bff', '#ffb86b', '#4dd0e1', '#e8eaf0', '#8a90a3'];
+  function render(){
+    [...el.children].forEach((b,i) => {
+      b.classList.toggle('rev', M.rev[i]);
+      b.classList.toggle('boom', i === M.boom);
+      if (M.rev[i] && !M.flag[i]){
+        if (M.mine[i]){ b.textContent = '💣'; }
+        else { b.textContent = M.cnt[i] || ''; b.style.color = NC[M.cnt[i]]; }
+      } else { b.textContent = M.flag[i] ? '🚩' : ''; b.style.color = ''; }
+    });
+    $('msLeft').textContent = M.m - M.flag.filter(Boolean).length;
+  }
+  document.querySelectorAll('.msLv').forEach(b => b.onclick = () => newGame(b.dataset.lv));
+  $('msFlag').onclick = () => {
+    flagMode = !flagMode;
+    $('msFlag').textContent = '🚩 Flag mode: ' + (flagMode ? 'on' : 'off');
+    $('msFlag').classList.toggle('on', flagMode);
+  };
+  setInterval(() => { if (M.started && !M.over) $('msTime').textContent = Math.round((Date.now() - M.start) / 1000) + 's'; }, 500);
+  newGame('easy');
+})();
+
+/* ================= SUDOKU ================= */
+(() => {
+  const el = $('sdBoard'), pad = $('sdPad');
+  const REMOVE = {easy:38, medium:46, hard:53};
+  let Z = store.get('sudoku', null), sel = -1;
+  function okAt(g, i, n){
+    const r = Math.floor(i / 9), c = i % 9, br = r - r % 3, bc = c - c % 3;
+    for (let k = 0; k < 9; k++){
+      const a = r*9 + k, b = k*9 + c, x = (br + Math.floor(k/3)) * 9 + bc + k % 3;
+      if ((a !== i && g[a] === n) || (b !== i && g[b] === n) || (x !== i && g[x] === n)) return false;
+    }
+    return true;
+  }
+  function fill(g){
+    const i = g.indexOf(0); if (i < 0) return true;
+    const ns = [1,2,3,4,5,6,7,8,9].sort(() => Math.random() - 0.5);
+    for (const n of ns){ if (okAt(g, i, n)){ g[i] = n; if (fill(g)) return true; g[i] = 0; } }
+    return false;
+  }
+  function countSolutions(g, limit){
+    let cnt = 0;
+    (function rec(){
+      let best = -1, bestC = null;
+      for (let i = 0; i < 81; i++){
+        if (g[i]) continue;
+        const cs = [];
+        for (let n = 1; n <= 9; n++) if (okAt(g, i, n)) cs.push(n);
+        if (!cs.length) return;
+        if (!bestC || cs.length < bestC.length){ best = i; bestC = cs; if (cs.length === 1) break; }
+      }
+      if (best < 0){ cnt++; return; }
+      for (const n of bestC){ g[best] = n; rec(); g[best] = 0; if (cnt >= limit) return; }
+    })();
+    return cnt;
+  }
+  function generate(d){
+    const sol = Array(81).fill(0); fill(sol);
+    const p = sol.slice();
+    const order = [...Array(81).keys()].sort(() => Math.random() - 0.5);
+    let rem = 0;
+    for (const i of order){
+      if (rem >= REMOVE[d]) break;
+      const s = p[i]; p[i] = 0;
+      if (countSolutions(p.slice(), 2) !== 1) p[i] = s; else rem++;
+    }
+    Z = {d, given:p.map(v => v > 0), cur:p.slice(), sol, start:Date.now(), done:false, time:0};
+    sel = -1; $('sdMsg').textContent = ''; render();
+  }
+  for (let i = 0; i < 81; i++){
+    const b = document.createElement('button');
+    const r = Math.floor(i / 9), c = i % 9;
+    b.className = 'cell' + (c % 3 === 2 && c < 8 ? ' br' : '') + (r % 3 === 2 && r < 8 ? ' bb' : '');
+    b.onclick = () => { sel = i; render(); };
+    el.appendChild(b);
+  }
+  [1,2,3,4,5,6,7,8,9,0].forEach(n => {
+    const b = document.createElement('button'); b.className = 'btn';
+    b.textContent = n || '⌫'; b.onclick = () => input(n); pad.appendChild(b);
+  });
+  function input(n){
+    if (!Z || sel < 0 || Z.given[sel] || Z.done) return;
+    Z.cur[sel] = n;
+    if (Z.cur.every((v,i) => v === Z.sol[i])){
+      Z.done = true; Z.time = Math.round((Date.now() - Z.start) / 1000);
+      $('sdMsg').textContent = `🎉 Solved ${Z.d} puzzle in ${fmtTime(Z.time)}!`;
+    }
+    render();
+  }
+  function render(){
+    const sr = Math.floor(sel / 9), sc = sel % 9;
+    const sv = sel >= 0 ? Z.cur[sel] : 0;
+    [...el.children].forEach((b,i) => {
+      const v = Z.cur[i], r = Math.floor(i / 9), c = i % 9;
+      b.textContent = v || '';
+      b.classList.toggle('given', Z.given[i]);
+      b.classList.toggle('sel', i === sel);
+      const peer = sel >= 0 && (r === sr || c === sc || (Math.floor(r/3) === Math.floor(sr/3) && Math.floor(c/3) === Math.floor(sc/3)));
+      b.classList.toggle('peer', peer && i !== sel);
+      b.classList.toggle('same', sv > 0 && v === sv && i !== sel);
+      b.classList.toggle('bad', v > 0 && !okAt(Z.cur, i, v));
+    });
+    [...pad.children].forEach((b,k) => {
+      if (k < 9){ const n = k + 1; b.disabled = Z.cur.filter(v => v === n).length >= 9; }
+    });
+    if (Z.done) $('sdMsg').textContent = `🎉 Solved ${Z.d} puzzle in ${fmtTime(Z.time)}!`;
+    store.set('sudoku', Z);
+  }
+  document.querySelectorAll('.sdLv').forEach(b => b.onclick = () => {
+    $('sdMsg').textContent = 'Generating…';
+    setTimeout(() => generate(b.dataset.d), 20);
+  });
+  document.addEventListener('keydown', e => {
+    if (current !== 'sudoku' || !Z) return;
+    if (/^[1-9]$/.test(e.key)) input(+e.key);
+    else if (['Backspace','Delete','0'].includes(e.key)) input(0);
+    else {
+      const mv = {ArrowLeft:-1, ArrowRight:1, ArrowUp:-9, ArrowDown:9}[e.key];
+      if (mv !== undefined){ e.preventDefault(); sel = sel < 0 ? 0 : Math.min(80, Math.max(0, sel + mv)); render(); }
+    }
+  });
+  setInterval(() => { if (Z && !Z.done && current === 'sudoku') $('sdTime').textContent = fmtTime(Math.round((Date.now() - Z.start) / 1000)); }, 1000);
+  Z ? render() : generate('easy');
+})();
+
+/* ================= LIGHTS OUT ================= */
+(() => {
+  const N = 5, el = $('lights');
+  let L = store.get('lights', null);
+  for (let i = 0; i < N*N; i++){
+    const c = document.createElement('button'); c.className = 'cell';
+    c.onclick = () => { if (!L.solved){ press(i); L.moves++; check(); render(); } };
+    el.appendChild(c);
+  }
+  function press(i){
+    const r = Math.floor(i / N), c = i % N;
+    [[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr,dc]) => {
+      const rr = r + dr, cc = c + dc;
+      if (rr >= 0 && rr < N && cc >= 0 && cc < N) L.grid[rr*N + cc] ^= 1;
+    });
+  }
+  function newLevel(level){
+    L = {grid:Array(N*N).fill(0), moves:0, level, solved:false};
+    const presses = Math.min(3 + level * 2, 20);
+    for (let k = 0; k < presses; k++) press(Math.floor(Math.random() * N * N));
+    if (!L.grid.includes(1)) press(12);
+    L.start = L.grid.slice(); render();
+  }
+  function check(){
+    if (!L.grid.includes(1)){
+      L.solved = true;
+      $('msgLights').textContent = `💡 Solved in ${L.moves} moves! Next level loading…`;
+      setTimeout(() => newLevel(L.level + 1), 1500);
+    }
+  }
+  function render(){
+    [...el.children].forEach((c,i) => c.classList.toggle('on', !!L.grid[i]));
+    $('moves').textContent = L.moves; $('lvl').textContent = L.level;
+    if (!L.solved) $('msgLights').textContent = '';
+    store.set('lights', L);
+  }
+  $('newLights').onclick = () => { L.grid = L.start.slice(); L.moves = 0; L.solved = false; render(); };
+  L && !L.solved ? render() : newLevel(L ? L.level + 1 : 1);
+})();
+
+/* ================= 15 PUZZLE ================= */
+(() => {
+  let P = store.get('fifteen', null);
+  const el = $('fifteen');
+  for (let i = 0; i < 16; i++){
+    const c = document.createElement('button'); c.className = 'cell';
+    c.onclick = () => slide(i); el.appendChild(c);
+  }
+  const neighbors = i => [i-4, i+4, i%4 ? i-1 : -1, i%4 < 3 ? i+1 : -1].filter(j => j >= 0 && j < 16);
+  function shuffle(){
+    const t = [...Array(15)].map((_,i) => i + 1).concat(0);
+    let blank = 15, prev = -1;
+    for (let k = 0; k < 400; k++){
+      const opts = neighbors(blank).filter(j => j !== prev);
+      const j = opts[Math.floor(Math.random() * opts.length)];
+      [t[blank], t[j]] = [t[j], t[blank]]; prev = blank; blank = j;
+    }
+    P = {tiles:t, moves:0, time:0, solved:false, started:false}; render();
+  }
+  function slide(i){
+    if (P.solved) return;
+    const blank = P.tiles.indexOf(0);
+    if (!neighbors(blank).includes(i)) return;
+    [P.tiles[blank], P.tiles[i]] = [P.tiles[i], P.tiles[blank]];
+    P.moves++; P.started = true;
+    if (P.tiles.every((v,k) => k === 15 ? v === 0 : v === k + 1)) P.solved = true;
+    render();
+  }
+  function render(){
+    [...el.children].forEach((c,i) => {
+      const v = P.tiles[i];
+      c.textContent = v || ''; c.classList.toggle('blank', !v);
+      c.style.background = v && v === i + 1 ? 'var(--good)' : '';
+    });
+    $('m15').textContent = P.moves; $('t15').textContent = P.time + 's';
+    $('msg15').textContent = P.solved ? `🧩 Solved in ${P.moves} moves and ${P.time}s!` : '';
+    store.set('fifteen', P);
+  }
+  $('new15').onclick = shuffle;
+  setInterval(() => {
+    if (P && P.started && !P.solved && current === 'g15'){ P.time++; $('t15').textContent = P.time + 's'; store.set('fifteen', P); }
+  }, 1000);
+  P ? render() : shuffle();
+})();
+
+/* ================= tabs, offline progress, main loop ================= */
+function showTab(id){
+  if (!document.getElementById(id)) id = 'forge';
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.g === id));
+  document.querySelectorAll('.game').forEach(g => g.classList.toggle('active', g.id === id));
+  current = id; store.set('tab', id);
+  if (IDLE[id]) IDLE[id].render();
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => showTab(b.dataset.g));
+
+function runIdle(secs){
+  while (secs > 0){
+    const s = Math.min(secs, 1);
+    for (const k in IDLE) IDLE[k].tick(s);
+    secs -= s;
+  }
+}
+function saveAll(){ for (const k in IDLE) IDLE[k].save(); store.set('shelfLast', Date.now()); }
+
+(() => {
+  const last = store.get('shelfLast', (store.get('forge', {}) || {}).last);
+  if (last){
+    const away = Math.min((Date.now() - last) / 1000, 8 * 3600);
+    if (away > 30){ runIdle(away); toast(`Welcome back! Your idle games ran for ${fmtTime(away)} while you were away.`); }
+  }
+})();
+
+showTab(store.get('tab', 'forge'));
+let lastT = performance.now();
+setInterval(() => {
+  const now = performance.now();
+  runIdle((now - lastT) / 1000); lastT = now;
+  if (IDLE[current]) IDLE[current].render();
+}, 100);
+setInterval(saveAll, 3000);
+addEventListener('beforeunload', saveAll);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveAll(); });
+</script>
+</body>
+</html>
