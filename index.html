@@ -20,8 +20,12 @@
         #game-container {
             width: 100%;
             height: 100%;
-            max-width: 800px;
-            max-height: 600px;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        #emulator {
+            width: 100%;
+            height: 100%;
         }
     </style>
 </head>
@@ -32,19 +36,19 @@
     </div>
 
     <script>
-        // Configuration for EmulatorJS
         EJS_player = '#emulator';
-        EJS_core = 'gba'; // Tells the system to load the Game Boy Advance engine
+        EJS_core = 'gba'; 
         EJS_gameName = "Balatro GBA";
         
-        // This points to the ROM file sitting in your same GitHub repository
+        // Ensure your uploaded rom file is named EXACTLY this:
         EJS_gameUrl = 'balatro.gba'; 
         
-        // Paths to the WebAssembly emulator binaries hosted via open-source CDN
-        EJS_pathtodata = 'https://jsdelivr.net';
+        // FIX: Using the official standalone stable CDN endpoint
+        EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
     </script>
     
-    <script src="https://jsdelivr.netloader.js"></script>
+    <!-- FIX: Loading the script directly from the official stable endpoint -->
+    <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
 
 </body>
 </html>
