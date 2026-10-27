@@ -1,10 +1,50 @@
-<!doctype html>
-<html>
-<head><title>Crowvicks</title></head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Balatro GBA Demake</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: sans-serif;
+        }
+        #game-container {
+            width: 100%;
+            height: 100%;
+            max-width: 800px;
+            max-height: 600px;
+        }
+    </style>
+</head>
 <body>
-  <h1>My Work Time killer</h1>
-  <ul>
-    <li><a href="/2048/">2048</a></li>
-  </ul>
+
+    <div id="game-container">
+        <div id="emulator"></div>
+    </div>
+
+    <script>
+        // Configuration for EmulatorJS
+        EJS_player = '#emulator';
+        EJS_core = 'gba'; // Tells the system to load the Game Boy Advance engine
+        EJS_gameName = "Balatro GBA";
+        
+        // This points to the ROM file sitting in your same GitHub repository
+        EJS_gameUrl = 'balatro.gba'; 
+        
+        // Paths to the WebAssembly emulator binaries hosted via open-source CDN
+        EJS_pathtodata = 'https://jsdelivr.net';
+    </script>
+    
+    <script src="https://jsdelivr.netloader.js"></script>
+
 </body>
 </html>
