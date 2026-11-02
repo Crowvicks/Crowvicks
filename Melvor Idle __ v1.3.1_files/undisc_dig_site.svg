@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   width="6.5484376mm"
+   height="35.495506mm"
+   viewBox="0 0 6.5484376 35.495506"
+   version="1.1"
+   id="svg8">
+  <defs
+     id="defs2" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     id="layer1"
+     transform="translate(-49.925931,-107.07003)">
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:50.8px;line-height:1.25;font-family:Arial;-inkscape-font-specification:Arial;fill:#85e22b;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="39.309525"
+       y="142.11905"
+       id="text12"><tspan
+         id="tspan10"
+         x="39.309525"
+         y="142.11905"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:50.8px;font-family:Consolas;-inkscape-font-specification:Consolas;fill:#85e22b;fill-opacity:1;stroke-width:0.264583">!</tspan></text>
+  </g>
+</svg>
