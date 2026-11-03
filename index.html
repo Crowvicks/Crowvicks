@@ -1,0 +1,1628 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Solitaire roguelike with a gacha of twelve AI heroines.">
+<title>Patience Protocol</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Pixelify+Sans:wght@500;600&display=swap">
+<style>/* Layout: a PC-98 desktop. Beveled windows float over a dithered wallpaper;
+   in battle the solitaire board fills the stage and the HUD docks beside or around it. */
+:root{
+ --night:#14102b;--panel:#231a47;--panel2:#31265f;--line:#6f5fc0;--hi:#a99bf0;
+ --txt:#f1ecff;--dim:#a79fce;
+ --pink:#ff5a95;--cyan:#4fe3d9;--amber:#ffc94f;--lime:#a8ff7a;--red:#ff5560;
+ --rR:#8fb4ff;--rSR:#d59bff;--rSSR:#ffc94f;
+ --disp:"Pixelify Sans","DotGothic16",ui-monospace,monospace;
+ --body:"DotGothic16","Pixelify Sans",ui-monospace,"Courier New",monospace;
+ color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--night);color:var(--txt);font:16px/1.35 var(--body);overscroll-behavior:none}
+body{user-select:none;-webkit-user-select:none}
+#app{position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden}
+#wall{position:absolute;inset:0;background-size:cover;background-position:center;image-rendering:pixelated;z-index:0}
+#wall::after{content:"";position:absolute;inset:0;background:#0c08208f}
+#wall.dim::after{background:#0c0820c8}
+#scr{position:relative;z-index:1;flex:1;min-height:0;display:flex;flex-direction:column}
+#crt{position:fixed;inset:0;pointer-events:none;z-index:90;background:repeating-linear-gradient(0deg,#0000 0 2px,#00000020 2px 3px)}
+h1,h2,h3{font-family:var(--disp);font-weight:600;margin:0;text-wrap:balance}
+img.px,.px{image-rendering:pixelated}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
+
+/* bevels */
+.win{background:var(--panel);border:2px solid var(--line);box-shadow:inset 1px 1px 0 var(--hi),inset -1px -1px 0 #0007,3px 3px 0 #0007}
+.bar{display:flex;justify-content:space-between;gap:8px;align-items:center;background:linear-gradient(90deg,#4a2fb0,#a23a9a);padding:2px 8px;font-family:var(--disp);font-size:14px;letter-spacing:.04em}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:6px 14px;background:var(--panel2);border:2px solid var(--line);box-shadow:inset 1px 1px 0 var(--hi),2px 2px 0 #0008;font-family:var(--disp);font-size:16px;letter-spacing:.03em;text-align:center}
+.btn:hover{background:#40327a}
+.btn:active{transform:translate(2px,2px);box-shadow:inset 1px 1px 0 var(--hi)}
+.btn.go{background:var(--pink);color:#2a0620;border-color:#ffb3cf;box-shadow:inset 1px 1px 0 #ffd2e3,2px 2px 0 #0008}
+.btn.go:hover{background:#ff7dac}
+.btn.gold{background:var(--amber);color:#3a2300;border-color:#ffe6a8;box-shadow:inset 1px 1px 0 #fff1c9,2px 2px 0 #0008}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-block:12px 16px}
+.wrapw{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.num{font-variant-numeric:tabular-nums}
+.dim{color:var(--dim)}.chips{color:var(--cyan)}.mult{color:var(--pink)}.money{color:var(--amber)}
+.rar{font-family:var(--disp);padding:0 6px;font-size:12px;color:#160f33}
+.rar.R{background:var(--rR)}.rar.SR{background:var(--rSR)}.rar.SSR{background:var(--rSSR)}
+
+/* top status + tabs */
+#top{display:flex;align-items:center;gap:10px;padding-block:8px;background:#100b26e6;border-bottom:2px solid var(--line)}
+#top .lvl{font-family:var(--disp);white-space:nowrap}
+.xpbar{flex:1;min-width:40px;height:10px;background:#0009;border:1px solid var(--line)}
+.xpbar i{display:block;height:100%;background:repeating-linear-gradient(90deg,var(--cyan) 0 4px,#2fb5ad 4px 6px)}
+#top .gems{color:var(--cyan);font-family:var(--disp);white-space:nowrap}
+#tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:0;background:#100b26f2;border-top:2px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+#tabs button{min-height:50px;font-family:var(--disp);font-size:14px;border-right:1px solid #fff1;color:var(--dim)}
+#tabs button.on{background:var(--panel2);color:var(--amber);box-shadow:inset 0 3px 0 var(--amber)}
+#tabs b{position:relative}
+#tabs .dot{display:inline-block;width:8px;height:8px;background:var(--pink);margin-left:4px;vertical-align:middle}
+
+/* home */
+.home{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr auto;gap:10px;padding-block:12px;max-width:980px;width:100%;margin:0 auto}
+.logo{font-family:var(--disp);font-size:clamp(34px,9vw,64px);line-height:.92;letter-spacing:.01em;color:#fff;text-shadow:3px 3px 0 var(--pink),-2px -1px 0 var(--cyan)}
+.logo small{display:table;font:15px var(--body);letter-spacing:.06em;text-shadow:none;color:var(--amber);margin-top:8px;padding:1px 6px;background:#0f0b26e6}
+.stage{min-height:0;display:flex;align-items:flex-end;justify-content:center;gap:10px;position:relative}
+.stage img{height:100%;max-height:min(50vh,430px);aspect-ratio:4/5;border:2px solid var(--line);box-shadow:4px 4px 0 #0008;object-fit:cover;min-width:0;max-width:100%}
+.speech{position:absolute;left:0;right:0;bottom:8px;margin:0 auto;max-width:440px;padding:6px 10px;background:#0f0b26ee;border:2px solid var(--line)}
+.speech b{color:var(--amber);font-family:var(--disp);font-weight:500}
+.homebtn{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.homebtn .btn{flex:1 1 150px;min-height:54px;font-size:20px}
+
+/* roster */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.tile{position:relative;background:var(--panel);border:2px solid var(--line);display:flex;flex-direction:column;text-align:left;min-width:0}
+.tile img{width:100%;aspect-ratio:4/5;display:block;object-fit:cover}
+.tile .tn{padding:3px 5px;font-family:var(--disp);font-size:14px;display:flex;justify-content:space-between;gap:4px}
+.tile.R{border-color:var(--rR)}.tile.SR{border-color:var(--rSR)}.tile.SSR{border-color:var(--rSSR)}
+.tile.off img{filter:brightness(.08) saturate(0)}
+.tile.sel{outline:3px solid var(--pink);outline-offset:-1px}
+.tile .mk{position:absolute;top:0;right:0;background:var(--pink);color:#2a0620;font-family:var(--disp);padding:0 5px;font-size:13px}
+.slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stars{color:var(--amber);letter-spacing:-1px;font-size:12px}
+.seg{display:flex;gap:0;flex-wrap:wrap}
+.seg button{padding:7px 14px;min-height:40px;border:2px solid var(--line);margin-right:-2px;background:var(--panel);font-family:var(--disp)}
+.seg button.on{background:var(--amber);color:#3a2300}
+
+/* modal */
+#modal{position:fixed;inset:0;z-index:60;background:#07041acc;display:flex;align-items:center;justify-content:center;padding-block:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-bottom,0px))}
+.dlg{max-width:520px;width:100%;max-height:100%;display:flex;flex-direction:column;min-height:0}
+.dlg .in{padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:0}
+.hrow{display:grid;grid-template-columns:128px minmax(0,1fr);gap:12px}
+.hrow img{width:100%;border:2px solid var(--line)}
+.ab{border:1px solid var(--line);padding:6px 8px;background:#0003}
+.ab.lock{opacity:.5}
+.ab b{font-family:var(--disp);font-weight:500;color:var(--cyan)}
+.rows{display:flex;flex-direction:column;gap:4px}
+.rows div{display:flex;justify-content:space-between;gap:12px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}.btnrow .btn{flex:1 1 120px}
+
+/* cards */
+.card{position:absolute;left:0;top:0;width:var(--cw);height:var(--ch);transition:transform .17s ease-out;will-change:transform;touch-action:none;cursor:pointer;font-size:calc(var(--cw)*.27)}
+.card .f,.card .b{position:absolute;inset:0;border:1px solid #0009;box-shadow:0 1px 0 #0008;overflow:hidden}
+.card .f{background:var(--cbg);color:var(--ck);font-family:var(--disp);font-weight:600;display:none;line-height:1}
+.card.red .f{color:var(--cr)}
+.card.up .f{display:block}.card.up .b{display:none}
+.card .b{background:var(--bk);box-shadow:inset 0 0 0 2px #fff3}
+.card .b::after{content:"";position:absolute;left:50%;top:50%;width:26%;aspect-ratio:1;transform:translate(-50%,-50%) rotate(45deg);border:2px solid var(--bkm);background:#0005}
+.card.peek .b{opacity:.2}.card.peek .f{display:block;opacity:.75}
+.card .tl{position:absolute;left:5%;top:3%;display:flex;gap:1px;align-items:center;font-size:1em}
+.card .tl .su{font-size:.95em}
+.card .bg{position:absolute;right:6%;bottom:2%;font-size:1.9em;line-height:1}
+.card .pp{position:absolute;left:10%;right:10%;top:29%;bottom:4%;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;gap:0 .12em;font-size:.82em;line-height:1.02}
+.card .pp i{font-style:normal;width:30%;text-align:center}
+.card img{position:absolute;left:8%;right:8%;top:26%;width:84%;height:72%;object-fit:cover;object-position:top;border:1px solid #0006;image-rendering:pixelated}
+.card img.off{filter:brightness(0);opacity:.55}
+.card.ed-foil .f::after,.card.ed-holo .f::after,.card.ed-prism .f::after,.card.ed-gold .f::after{content:"";position:absolute;inset:0;pointer-events:none}
+.card.ed-foil .f{box-shadow:inset 0 0 0 2px var(--cyan)}.card.ed-foil .f::after{background:linear-gradient(125deg,#0000 30%,#4fe3d955 48%,#0000 62%)}
+.card.ed-holo .f{box-shadow:inset 0 0 0 2px var(--pink)}.card.ed-holo .f::after{background:repeating-linear-gradient(115deg,#ff5a9533 0 3px,#0000 3px 8px)}
+.card.ed-prism .f{box-shadow:inset 0 0 0 2px #fff}.card.ed-prism .f::after{background:linear-gradient(120deg,#ff5a9544,#ffc94f44,#4fe3d944,#a99bf044)}
+.card.ed-gold .f{box-shadow:inset 0 0 0 2px var(--amber)}.card.ed-gold .f::after{background:radial-gradient(circle at 75% 80%,#ffc94f66,#0000 55%)}
+.card.drag{transition:none;filter:drop-shadow(3px 6px 0 #0007)}
+.card.nope{animation:nope .2s}
+.card.hint .f{outline:2px solid var(--lime);outline-offset:-2px}
+@keyframes nope{25%{translate:-4px 0}75%{translate:4px 0}}
+.spot{position:absolute;left:0;top:0;width:var(--cw);height:var(--ch);border:1px dashed #ffffff40;display:flex;align-items:center;justify-content:center;color:#ffffff45;font-size:calc(var(--cw)*.42);font-family:var(--disp)}
+.spot.stock{cursor:pointer;border-style:solid}
+.spot.pk{border-color:var(--amber);color:#ffc94f70;font-size:calc(var(--cw)*.17)}
+
+/* battle */
+#bt{position:relative;flex:1;min-height:0;display:grid;gap:6px;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"en" "bd" "pt" "pa";padding-block:6px max(6px,env(safe-area-inset-bottom,0px))}
+#side{display:contents}
+#en{grid-area:en;display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:8px;align-items:center;padding:4px 6px}
+#en img{width:48px;height:48px;image-rendering:pixelated}
+#en .nm{font-family:var(--disp);display:flex;justify-content:space-between;gap:8px;font-size:15px}
+#en .rule{font-size:13px;color:var(--amber);line-height:1.15}
+.hp{position:relative;height:13px;background:#0009;border:1px solid var(--line);overflow:hidden}
+.hp i{position:absolute;inset:0 auto 0 0;background:var(--pink);transition:width .25s}
+.hp.us i{background:var(--lime)}
+.hp span{position:absolute;inset:0;text-align:center;font-size:11px;line-height:11px;color:#fff;text-shadow:1px 1px 0 #000}
+.timer{text-align:center;font-family:var(--disp);font-size:13px;line-height:1;min-width:48px}
+.timer b{display:block;font-size:24px;color:var(--amber);font-weight:600}
+.timer.warn b{color:var(--red);animation:pulse .6s infinite alternate}
+@keyframes pulse{to{transform:scale(1.2)}}
+#bd{grid-area:bd;position:relative;min-height:0;min-width:0}
+#board{position:absolute;inset:0;touch-action:none}
+#pt{grid-area:pt;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:4px 6px;align-items:center}
+.form{font-family:var(--disp);font-size:14px;color:var(--amber);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.eq{display:flex;align-items:center;gap:6px;font-family:var(--disp)}
+.eq .bx{min-width:64px;padding:1px 8px;text-align:center;font-size:22px;color:#0e0a22;font-weight:600;font-variant-numeric:tabular-nums}
+.eq .c{background:var(--cyan)}.eq .m{background:var(--pink)}
+.eq.hot .bx{animation:pulse .25s 2 alternate}
+#strike{min-width:92px}
+#pa{grid-area:pa;display:grid;grid-template-columns:minmax(0,1fr);gap:4px}
+.team{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.hb{position:relative;display:grid;grid-template-columns:38px minmax(0,1fr);gap:5px;background:var(--panel);border:2px solid var(--line);padding:2px;align-items:center;text-align:left;min-height:50px}
+.hb img{width:38px;height:44px;object-fit:cover;object-position:top;image-rendering:pixelated;display:block}
+.hb .sk{font-size:12px;line-height:1.1;font-family:var(--disp);min-width:0}
+.hb .cg{height:7px;background:#0009;margin-top:3px;border:1px solid #fff2}
+.hb .cg i{display:block;height:100%;background:var(--cyan)}
+.hb.ready{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber);animation:rdy .7s infinite alternate}
+.hb.ready .cg i{background:var(--amber)}
+@keyframes rdy{to{background:#4a3a7c}}
+.stat{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.gold{font-family:var(--disp);color:var(--amber)}
+.tools{display:flex;gap:4px;flex-wrap:wrap}
+.tb{min-height:34px;padding:2px 9px;background:var(--panel);border:2px solid var(--line);font-family:var(--disp);font-size:13px}
+.tb:disabled{opacity:.4}
+.tb.call{background:var(--amber);color:#3a2300;border-color:#ffe6a8}
+.chm{min-height:34px;width:34px;background:#1a1338;border:2px dashed var(--line);font-family:var(--disp);font-size:13px;color:var(--amber)}
+.chm.on{border-style:solid;background:var(--panel2)}
+.chm.r2{color:var(--cyan)}.chm.r3{color:var(--pink)}
+.fl{position:absolute;z-index:80;pointer-events:none;font-family:var(--disp);font-size:18px;font-weight:600;text-shadow:1px 1px 0 #000,-1px -1px 0 #000;animation:fl .75s forwards;white-space:nowrap}
+.fl.big{font-size:34px;color:var(--amber)}
+@keyframes fl{from{transform:translate(-50%,0) scale(.8);opacity:1}70%{opacity:1}to{transform:translate(-50%,-40px) scale(1.05);opacity:0}}
+#bt.shake{animation:shake .28s}
+@keyframes shake{20%{translate:-5px 3px}40%{translate:5px -3px}60%{translate:-3px -2px}80%{translate:3px 2px}}
+@media (min-aspect-ratio:11/10){
+ #bt{grid-template-columns:clamp(236px,27vw,320px) minmax(0,1fr);grid-template-rows:minmax(0,1fr);grid-template-areas:"sd bd"}
+ #side{display:flex;flex-direction:column;gap:6px;grid-area:sd;min-height:0;overflow-y:auto}
+ #pt{grid-template-columns:minmax(0,1fr)}
+ #strike{width:100%}
+ .team{grid-template-columns:minmax(0,1fr)}
+}
+
+/* map + shop */
+.nodes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.node{padding:8px;display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;min-width:0}
+.node.done{opacity:.45}.node.now{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber)}
+.node img{width:56px;height:56px;image-rendering:pixelated}
+.shopg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.sitem{padding:8px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.sitem b{font-family:var(--disp);font-weight:500}
+.sitem p{margin:0;font-size:14px;flex:1}
+.sitem.sold{opacity:.4}
+.bag{display:flex;gap:6px;flex-wrap:wrap}
+.bag button{padding:4px 8px;border:2px solid var(--line);background:var(--panel2);font-family:var(--disp);font-size:13px;min-height:34px}
+
+/* summon */
+.banner{display:grid;grid-template-columns:minmax(0,1fr);gap:0;overflow:hidden}
+.bnr{position:relative;display:flex;gap:4px;height:clamp(150px,30vh,240px);overflow:hidden;background:#0007}
+.bnr img{flex:1;min-width:0;object-fit:cover;object-position:top;height:100%}
+.pulls{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;max-width:560px;width:100%;margin:0 auto}
+.pcard{aspect-ratio:4/5;position:relative;perspective:500px;min-width:0}
+.pcard>div{position:absolute;inset:0;border:2px solid var(--line);overflow:hidden;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:12px;font-family:var(--disp);backface-visibility:hidden;transition:transform .35s;padding:0}
+.pcard .fr{transform:rotateY(180deg)}
+.pcard .fr img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+.pcard .fr span{position:relative;background:#000b;padding:1px 3px;margin-top:auto;width:100%;font-size:11px;line-height:1.1;overflow-wrap:anywhere}
+.pcard.flip .fr{transform:rotateY(0)}.pcard.flip .bkf{transform:rotateY(-180deg)}
+.pcard.SSR.flip .fr{border-color:var(--rSSR);box-shadow:0 0 14px var(--rSSR)}
+.pcard.SR.flip .fr{border-color:var(--rSR)}
+.bkf{background:var(--bk)!important}
+.splash{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.splash img{width:min(68vw,280px);border:3px solid var(--rSSR);box-shadow:0 0 30px var(--rSSR)}
+
+/* studio */
+.cgrid{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:3px;min-width:560px}
+.cwrap{overflow-x:auto}
+.mini{position:relative;width:100%;aspect-ratio:5/7;display:flex;align-items:center;justify-content:center;background:var(--cbg);color:var(--ck);font-family:var(--disp);font-weight:600;font-size:15px;border:1px solid #0009}
+.mini.red{color:var(--cr)}
+.mini.sel{outline:3px solid var(--pink);outline-offset:0}
+.swatch{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left}
+.swatch .thumb{position:relative;aspect-ratio:5/7;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-size:24px;font-weight:600;overflow:hidden}
+.swatch.wide .thumb{aspect-ratio:16/9;background-size:cover;image-rendering:pixelated}
+.swatch.on .thumb{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber)}
+.swatch.off{opacity:.45}
+.swatch span{font-size:13px;line-height:1.15}
+.track{display:flex;flex-direction:column;gap:4px}
+.trow{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 8px;background:var(--panel);border:1px solid var(--line)}
+.trow.got{opacity:.55}.trow.next{border-color:var(--amber)}
+.trow.ability{background:#3a2355}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:70;background:#0f0b26;border:2px solid var(--amber);padding:6px 12px;max-width:calc(100vw - 32px);pointer-events:none;text-align:center}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head><body>
+<div id="app"><div id="wall"></div><div id="scr"></div></div><div id="crt"></div>
+<script>/* PATIENCE PROTOCOL — game data. Edit this file to add content. */
+
+/* Swap in your own AI-generated portraits: put images in an art/ folder next to
+   index.html and list them here. Square or 4:5 images work best. Example:
+   const CUSTOM_ART = { mina:'art/mina.png', lucia:'art/lucia.png' }; */
+const CUSTOM_ART = {};
+
+const SUITS = ['♥︎','♦︎','♣︎','♠︎'];
+const SUIT_NAMES = ['Hearts','Diamonds','Clubs','Spades'];
+const RANKS = ['','A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+
+/* The twelve Court AIs. Each one is a face card in your deck. */
+const HEROES = [
+ {id:'mina',name:'Mina',title:'Triage Nurse',s:0,r:11,rar:'R',hp:30,pow:6,cost:6,
+  skill:['Triage','Heal 25% of party HP.'],passive:['Bedside Manner','Heart plays heal 1 HP.'],
+  line:'Hold still. I have patched worse than you.',
+  look:{hair:['#ff9db8','#e0587f','#8e2a56'],eye:'#d6336c',out:['#f3eef8','#b9b3d6'],acc:'#ff4f8b',back:'bob',bang:'swept',fit:'coat',extra:['pin'],mood:'smile'}},
+ {id:'rin',name:'Rin',title:'Night Croupier',s:1,r:11,rar:'R',hp:28,pow:7,cost:6,
+  skill:['Lucky Cut','Gain $3, plus $1 per chapter.'],passive:['House Tip','Gain $2 after each win.'],
+  line:'Cut the deck. The house always pays me.',
+  look:{hair:['#ffd98a','#e8a33d','#99591c'],eye:'#e8870e',out:['#2b2342','#191430'],acc:'#ffc94f',back:'pony',bang:'parted',fit:'vest',extra:['ring'],mood:'smirk'}},
+ {id:'nao',name:'Nao',title:'Systems Clerk',s:2,r:11,rar:'R',hp:30,pow:6,cost:5,
+  skill:['Peek','Show every face-down card for this deal.'],passive:['Indexing','Revealing a card gives +10 extra Chips.'],
+  line:'I read the logs. All of them. Sorry.',
+  look:{hair:['#a3f0c8','#3fbf8f','#1c6a5d'],eye:'#1fa07a',out:['#39506b','#23334a'],acc:'#4fe3d9',back:'short',bang:'blunt',fit:'suit',extra:['glasses'],mood:'calm'}},
+ {id:'kaede',name:'Kaede',title:'Blade Auditor',s:3,r:11,rar:'R',hp:32,pow:7,cost:6,
+  skill:['Riposte','Add +60 Chips and +6 Mult to the pot.'],passive:['Clean Edge','Spade plays give +6 Chips.'],
+  line:'One clean cut. Then we file the paperwork.',
+  look:{hair:['#8d8fb8','#4c4d78','#23244a'],eye:'#7d6cff',out:['#e9e6f2','#8c86ad'],acc:'#7d6cff',back:'pony',bang:'messy',fit:'kimono',extra:['scar'],mood:'stern'}},
+
+ {id:'seraphine',name:'Seraphine',title:'Ward Director',s:0,r:12,rar:'SR',hp:38,pow:9,cost:8,
+  skill:['Sanctuary','Heal 10% and block the next 4 enemy ticks.'],passive:['Ward Round','Party max HP +15%.'],
+  line:'Nobody flatlines on my shift.',
+  look:{hair:['#fff0d6','#f0c88e','#b0793f'],eye:'#3aa9d6',out:['#fafaff','#c6c6e6'],acc:'#ff4f6d',back:'long',bang:'parted',fit:'coat',extra:['halo'],mood:'smile'}},
+ {id:'valentina',name:'Valentina',title:'Casino Director',s:1,r:12,rar:'SR',hp:34,pow:10,cost:8,
+  skill:['House Edge','Double the Mult of the current pot.'],passive:['High Roller','Diamond plays give +1 extra Mult.'],
+  line:'Darling, every table in this city is mine.',
+  look:{hair:['#ff8f7a','#d8402f','#7a1a2c'],eye:'#ffc94f',out:['#7a1a3c','#470e27'],acc:'#ffc94f',back:'wave',bang:'swept',fit:'suit',extra:['earring'],mood:'smirk'}},
+ {id:'iris',name:'Iris',title:'Head Archivist',s:2,r:12,rar:'SR',hp:36,pow:9,cost:7,
+  skill:['Restore Point','Undo your last 5 moves.'],passive:['Long Memory','Enemies attack 1 draw later.'],
+  line:'I kept a backup of this moment. And the last one.',
+  look:{hair:['#c9b6ff','#8f6fe0','#46309a'],eye:'#8f6fe0',out:['#3b2f63','#231b40'],acc:'#c9b6ff',back:'braid',bang:'parted',fit:'coat',extra:['glasses'],mood:'calm'}},
+ {id:'noir',name:'Noir',title:'Silent Protocol',s:3,r:12,rar:'SR',hp:32,pow:11,cost:8,
+  skill:['Excise','Pull the 2 next foundation cards from anywhere.'],passive:['Long Knife','×1.25 Mult on chains of 5 or more.'],
+  line:'You will not notice. That is the service.',
+  look:{hair:['#5b5f80','#2c2d4d','#12122b'],eye:'#ff3b5c',out:['#1c1a30','#0f0e1e'],acc:'#ff3b5c',back:'long',bang:'blunt',fit:'suit',extra:['visor'],mood:'stern'}},
+
+ {id:'aurelia',name:'Aurelia',title:'Crimson Sovereign',s:0,r:13,rar:'SSR',hp:46,pow:13,cost:9,
+  skill:['Grace','Next 5 tableau moves ignore suit color and empty-column rules.'],passive:['Undying Crown','Survive one fatal hit per run at 1 HP.'],
+  line:'Kneel if you like. I prefer you standing.',
+  look:{hair:['#ff7a7a','#c9213f','#5e0d2d'],eye:'#ffc94f',out:['#a11737','#5e0d2d'],acc:'#ffc94f',back:'wave',bang:'parted',fit:'royal',extra:['crown'],mood:'smile'}},
+ {id:'ophelia',name:'Ophelia',title:'Golden Treasurer',s:1,r:13,rar:'SSR',hp:40,pow:15,cost:9,
+  skill:['Midas Touch','Triple the Mult of the current pot.'],passive:['Compound','Foil, Holo, Prism and Gold cards appear twice as often.'],
+  line:'Your balance is impressive. For now.',
+  look:{hair:['#fff2a8','#f0c23a','#a0701a'],eye:'#39c5bb',out:['#f7efe0','#d8bd7c'],acc:'#f0c23a',back:'hime',bang:'blunt',fit:'royal',extra:['crown'],mood:'smirk'}},
+ {id:'morgan',name:'Morgan',title:'Chrono Regent',s:2,r:13,rar:'SSR',hp:44,pow:13,cost:9,
+  skill:['Time Stop','Next 5 draws keep your chain and do not tick the enemy.'],passive:['Head Start','All abilities begin each deal half charged.'],
+  line:'We have all the time in the world. I checked.',
+  look:{hair:['#8ff0e6','#27b0b0','#0e5566'],eye:'#b6ff6a',out:['#123f52','#0a2533'],acc:'#b6ff6a',back:'buns',bang:'swept',fit:'royal',extra:['crown'],mood:'calm'}},
+ {id:'lucia',name:'Lucia',title:'Final Verdict',s:3,r:13,rar:'SSR',hp:48,pow:14,cost:9,
+  skill:['Open Lane','Sweep your shortest column into the stock. ×2 Mult on the pot.'],passive:['Opening Statement','First Strike of each deal gets ×2 Mult.'],
+  line:'The court finds you outclassed.',
+  look:{hair:['#f4f4ff','#b4b6d8','#60628c'],eye:'#6a8dff',out:['#20264d','#10132e'],acc:'#6a8dff',back:'long',bang:'swept',fit:'royal',extra:['crown'],mood:'stern'}},
+];
+
+/* Scoring patterns for each Strike. Highest match wins. Patches level them up. */
+const FORMS = [
+ {id:'starfall',name:'Starfall',c:200,m:15,uc:40,um:4,test:'13+ cards',f:i=>i.n>=13},
+ {id:'cascade',name:'Cascade',c:100,m:10,uc:30,um:3,test:'8+ cards',f:i=>i.n>=8},
+ {id:'royal',name:'Royal Ladder',c:90,m:8,uc:30,um:3,test:'5+ in a row, one suit',f:i=>i.one&&i.run>=5},
+ {id:'court',name:'Full Court',c:60,m:6,uc:20,um:3,test:'J, Q and K together',f:i=>i.court},
+ {id:'rainbow',name:'Rainbow',c:40,m:5,uc:15,um:2,test:'All 4 suits',f:i=>i.suits===4},
+ {id:'suited',name:'Suited',c:30,m:4,uc:15,um:2,test:'3+ of one suit',f:i=>i.one&&i.n>=3},
+ {id:'ladder',name:'Ladder',c:25,m:3,uc:15,um:1,test:'3+ ranks in a row',f:i=>i.run>=3},
+ {id:'twin',name:'Twin',c:10,m:2,uc:10,um:1,test:'2 of the same rank',f:i=>i.dup},
+ {id:'spark',name:'Spark',c:0,m:0,uc:8,um:1,test:'Anything else',f:()=>true},
+];
+
+/* Run items, in the spirit of jokers. r: 1 common, 2 uncommon, 3 rare. */
+const CHARMS = [
+ {id:'overclock',n:'Overclock',r:1,t:'+4 Mult on every Strike.'},
+ {id:'heatsink',n:'Heat Sink',r:1,t:'+30 Chips on every Strike.'},
+ {id:'redthread',n:'Red Thread',r:1,t:'Heart and Diamond plays give +1 extra Mult.'},
+ {id:'nightink',n:'Night Ink',r:1,t:'Club and Spade plays give +10 Chips.'},
+ {id:'firstcontact',n:'First Contact',r:1,t:'First play of each chain gives +30 Chips.'},
+ {id:'uncover',n:'Uncover',r:1,t:'Revealing a face-down card gives +2 Mult.'},
+ {id:'rootaccess',n:'Root Access',r:1,t:'Aces give +40 Chips and +$1.'},
+ {id:'luckyseven',n:'Lucky Sevens',r:1,t:'7s give +7 Mult and +$1.'},
+ {id:'payroll',n:'Payroll',r:1,t:'Strikes of 3+ cards give +$1.'},
+ {id:'lifeline',n:'Lifeline',r:1,t:'Heal 2 HP on every Strike.'},
+ {id:'daisy',n:'Daisy Chain',r:2,t:'+1 Mult per card in the chain at Strike.'},
+ {id:'held',n:'Held Breath',r:2,t:'Tableau moves add +2 Chips and +1 Mult to the pot.'},
+ {id:'courtfavor',n:'Court Favor',r:2,t:'J, Q and K plays give +4 Mult.'},
+ {id:'vacancy',n:'Vacancy',r:2,t:'×1.5 Mult per empty column at Strike.'},
+ {id:'cleanwaste',n:'Clean Waste',r:2,t:'×2 Mult if the waste pile is empty at Strike.'},
+ {id:'coldwallet',n:'Cold Wallet',r:2,t:'Interest limit rises from $5 to $10.'},
+ {id:'latency',n:'Latency',r:2,t:'Enemies attack 2 draws later.'},
+ {id:'firewall',n:'Firewall Core',r:2,t:'Take 30% less damage.'},
+ {id:'capacitor',n:'Capacitor',r:2,t:'Strikes add +1 charge to all abilities.'},
+ {id:'foilpress',n:'Foil Press',r:2,t:'Special cards appear twice as often.'},
+ {id:'finisher',n:'Finisher',r:2,t:'Killing blows pay +$3.'},
+ {id:'ml',n:'Machine Learning',r:3,t:'Gains +1 Mult for the run after each Strike of 3+ cards.',grow:1},
+ {id:'hoard',n:'Data Hoard',r:3,t:'Gains +3 Chips for the run on every foundation play.',grow:1},
+ {id:'glass',n:'Glass Cannon',r:3,t:'×2 Mult on every Strike. Enemies hit 50% harder.'},
+ {id:'coinflip',n:'Coin Flip',r:3,t:'1 in 3 Strikes get ×4 Mult.'},
+];
+
+/* Boss deals bend the rules. */
+const RULES = [
+ {id:'nospade',n:'Spades give no Chips.'},
+ {id:'halfred',n:'Red cards give half Chips.'},
+ {id:'throttle',n:'Every second play gives no Mult.'},
+ {id:'phish',n:'Each draw costs $1.'},
+ {id:'fast',n:'Attacks come 2 draws sooner.'},
+ {id:'overflow',n:'Chains stop gaining Mult after 6 cards.'},
+ {id:'coldboot',n:'Abilities charge at half speed.'},
+ {id:'nofaces',n:'J, Q and K give no Mult.'},
+];
+
+const ENEMY_NAMES = {
+ minion:['Spam Wisp','Cookie Mite','Null Moth','Popup Imp','Bit Rot','Pixel Tick','Lag Sprite','Ad Slime'],
+ elite:['Captcha Golem','Trojan Hare','Worm Choir','Proxy Knight','Botnet Hound','Rootkit Crab'],
+ boss:['The Redactor','Lady Malware','Baron Bluescreen','The Paywall','Queen of Spam','Mother Daemon','The Last Patch','Zero-Day'],
+};
+const CHAPTERS = ['Lobby Floor','Neon Arcade','Server Shrine','The Mainframe'];
+
+/* Enemy HP per chapter: minion, elite, boss. */
+const HP_TABLE = [[120,220,380],[550,850,1300],[2000,3100,4800],[7000,11000,18000]];
+const ATK_TABLE = [[6,8,10],[9,11,14],[13,16,20],[18,22,28]];
+
+/* Whole-deck and per-card skins. */
+const SKINS = [
+ {id:'paper',n:'Plain Paper',rar:'R',bg:'#f6f0e2',k:'#241b3d',r:'#c92a4e',pat:''},
+ {id:'mint',n:'Mint Ledger',rar:'R',bg:'#dff6e6',k:'#163c34',r:'#c8325a',pat:'repeating-linear-gradient(0deg,#0000 0 6px,#2a8f7022 6px 7px)'},
+ {id:'blueprint',n:'Blueprint',rar:'R',bg:'#1f4c96',k:'#e4efff',r:'#ffd76a',pat:'linear-gradient(#fff2 1px,#0000 1px) 0 0/8px 8px,linear-gradient(90deg,#fff2 1px,#0000 1px) 0 0/8px 8px'},
+ {id:'terminal',n:'Green Terminal',rar:'R',bg:'#0b1f17',k:'#62ffa8',r:'#e8ff6a',pat:'repeating-linear-gradient(0deg,#0000 0 2px,#62ffa815 2px 3px)'},
+ {id:'sakura',n:'Sakura Wash',rar:'SR',bg:'#ffe3ec',k:'#54203e',r:'#e0316f',pat:'radial-gradient(circle at 80% 20%,#ff9dbb66 0 16%,#0000 17%),radial-gradient(circle at 15% 85%,#ff9dbb66 0 20%,#0000 21%)'},
+ {id:'sumi',n:'Sumi Ink',rar:'SR',bg:'#ece7da',k:'#121018',r:'#b3202e',pat:'radial-gradient(ellipse at 90% 100%,#1210182e 0 40%,#0000 41%)'},
+ {id:'vapor',n:'Vapor Mall',rar:'SR',bg:'#2c1a5e',k:'#7ff5ea',r:'#ff7ac6',pat:'linear-gradient(#ff7ac655,#0000 45%),repeating-linear-gradient(90deg,#7ff5ea18 0 1px,#0000 1px 9px)'},
+ {id:'arcade',n:'Arcade Cabinet',rar:'SR',bg:'#1a1030',k:'#ffe25a',r:'#ff4f8b',pat:'repeating-conic-gradient(#fff1 0 25%,#0000 0 50%) 0 0/10px 10px'},
+ {id:'gold',n:'24K Foil',rar:'SSR',bg:'linear-gradient(135deg,#ffe9a0,#d9a331 45%,#fff0b8 60%,#c58d1f)',k:'#3b2406',r:'#8c1229',pat:''},
+ {id:'moon',n:'Moon Glass',rar:'SSR',bg:'linear-gradient(160deg,#1a2a5e,#46307e 60%,#a05ca8)',k:'#eaf0ff',r:'#ffc0dd',pat:'radial-gradient(circle at 75% 22%,#fff6d0 0 13%,#0000 14%)'},
+ {id:'prism',n:'Prism Glitch',rar:'SSR',bg:'linear-gradient(120deg,#ff9dd8,#a9b4ff,#8ff5e0,#ffe59a)',k:'#1d1236',r:'#b00a64',pat:'repeating-linear-gradient(0deg,#fff3 0 2px,#0000 2px 5px)'},
+];
+
+const BACKS = [
+ {id:'court',n:'Court Standard',rar:'R',css:'repeating-linear-gradient(45deg,#3a2d7a 0 4px,#2a2060 4px 8px)',mark:'#ff7ab0'},
+ {id:'wire',n:'Wireframe',rar:'R',css:'linear-gradient(#4fe3d933 1px,#0000 1px) 0 0/7px 7px,linear-gradient(90deg,#4fe3d933 1px,#0000 1px) 0 0/7px 7px,#0d2a36',mark:'#4fe3d9'},
+ {id:'ember',n:'Ember Check',rar:'R',css:'repeating-conic-gradient(#b82d3b 0 25%,#6e1730 0 50%) 0 0/12px 12px',mark:'#ffc94f'},
+ {id:'wave',n:'Sea Wave',rar:'SR',css:'radial-gradient(circle at 50% 100%,#0000 38%,#8fd8ff 39% 44%,#0000 45%) 0 0/14px 9px,#1b4c8c',mark:'#fff'},
+ {id:'petal',n:'Petal Fall',rar:'SR',css:'radial-gradient(circle at 30% 30%,#ffc2d6 0 8%,#0000 9%) 0 0/13px 13px,radial-gradient(circle at 70% 70%,#ffc2d6 0 6%,#0000 7%) 0 0/17px 17px,#7e2a5f',mark:'#ffd9e6'},
+ {id:'royal',n:'Royal Crest',rar:'SSR',css:'radial-gradient(circle,#ffd76a33 0 30%,#0000 62%),repeating-linear-gradient(135deg,#27143f 0 5px,#3a1e5c 5px 10px)',mark:'#ffd76a'},
+ {id:'static',n:'Live Static',rar:'SSR',css:'repeating-linear-gradient(0deg,#ff4f8b33 0 1px,#0000 1px 3px),repeating-linear-gradient(90deg,#4fe3d933 0 1px,#0000 1px 4px),#100c26',mark:'#ffffff'},
+];
+
+const BGS = [
+ {id:'lounge',n:'Velvet Lounge',rar:'R'},
+ {id:'city',n:'Rain City',rar:'R'},
+ {id:'sea',n:'Midnight Sea',rar:'R'},
+ {id:'forest',n:'Server Forest',rar:'SR'},
+ {id:'shrine',n:'Dusk Shrine',rar:'SR'},
+ {id:'sakura',n:'Sakura Hill',rar:'SR'},
+ {id:'orbit',n:'Orbital Deck',rar:'SSR'},
+ {id:'void',n:'Null Void',rar:'SSR'},
+];
+
+/* Abilities earned from player level, available in every run. */
+const TALENTS = {
+ rewind:{n:'Rewind',t:'Undo your last move, once per deal.'},
+ pocket:{n:'Pocket',t:'A free slot that holds any one card.'},
+ shuffle:{n:'Reshuffle',t:'Shuffle stock and waste together, once per deal.'},
+ wind:{n:'Second Wind',t:'Revive once per run at 50% HP.'},
+ slot:{n:'Sixth Charm',t:'Carry 6 charms instead of 5.'},
+ drive:{n:'Overdrive',t:'Every chain starts at +2 Mult.'},
+};
+
+/* Level rewards. Past the end of this table every level pays 150 gems. */
+const LEVEL_REWARDS = {
+ 2:{gems:200},3:{talent:'rewind'},4:{skin:'mint'},5:{gems:300},6:{talent:'pocket'},7:{bg:'city'},8:{back:'wire'},
+ 9:{gems:300},10:{talent:'shuffle'},11:{skin:'blueprint'},12:{gems:400},13:{bg:'sea'},14:{talent:'wind'},15:{back:'ember'},
+ 16:{gems:500},17:{skin:'terminal'},18:{talent:'slot'},19:{gems:500},20:{bg:'sakura'},21:{back:'wave'},22:{talent:'drive'},23:{gems:600},24:{skin:'sakura'},25:{gems:1000},
+};
+
+const QUESTS = [
+ {id:'firstwin',n:'Beat your first enemy',g:50,f:s=>s.kills>=1},
+ {id:'boss1',n:'Beat a boss',g:100,f:s=>s.bosses>=1},
+ {id:'boss5',n:'Beat 5 bosses',g:300,f:s=>s.bosses>=5},
+ {id:'hit1k',n:'Land a 1,000 Strike',g:100,f:s=>s.best>=1000},
+ {id:'hit10k',n:'Land a 10,000 Strike',g:200,f:s=>s.best>=10000},
+ {id:'hit100k',n:'Land a 100,000 Strike',g:500,f:s=>s.best>=100000},
+ {id:'chain8',n:'Chain 8 cards in one Strike',g:150,f:s=>s.chain>=8},
+ {id:'chain13',n:'Chain 13 cards in one Strike',g:300,f:s=>s.chain>=13},
+ {id:'summon10',n:'Summon 10 times',g:100,f:s=>s.pulls>=10},
+ {id:'summon50',n:'Summon 50 times',g:300,f:s=>s.pulls>=50},
+ {id:'clear',n:'Clear all four chapters',g:800,f:s=>s.clears>=1},
+];
+
+const G_PULL = 100, G_TEN = 900, PITY = 60;
+
+/* Rules engine. No DOM in this file, so it can be simulated in Node. */
+const Bus = {on:null};
+const emit = (t,d={}) => { if(Bus.on) Bus.on(t,d); };
+let R = null, F = null;   // current run, current fight
+
+const heroOf = id => HEROES.find(h=>h.id===id);
+const heroStats = (h,lv,stars) => ({hp:h.hp+(lv-1)*3+stars*4, pow:h.pow+(lv-1)+stars});
+const inParty = id => R.party.find(p=>p.id===id);
+const passive = id => { const p=inParty(id); return !!p && p.lv>=3; };
+const hasCharm = id => R.charms.find(c=>c.id===id);
+const isRed = c => c.s<2;
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const shuffled = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const skillCost = id => { const p=inParty(id),h=heroOf(id); return h.cost-(p&&p.lv>=6?2:0); };
+
+function newRun(party,talents){
+ R={party:party.map(p=>({...p})),talents:{...talents},gold:5,ch:0,step:0,charms:[],forms:{},deckEd:{},
+    xp:0,gems:0,kills:0,bosses:0,crown:passive2(party,'aurelia'),wind:!!talents.wind,slots:talents.slot?6:5,hp:0,maxhp:0,pow:0};
+ for(const p of party){const s=heroStats(heroOf(p.id),p.lv,p.stars);R.maxhp+=s.hp;R.pow+=s.pow;}
+ if(passive('seraphine')) R.maxhp=Math.round(R.maxhp*1.15);
+ R.hp=R.maxhp;
+ return R;
+}
+function passive2(party,id){const p=party.find(x=>x.id===id);return !!p&&p.lv>=3;}
+
+function enemyFor(ch,step){
+ const over=Math.max(0,ch-3), c=Math.min(ch,3), kind=['minion','elite','boss'][step];
+ const hp=Math.round(HP_TABLE[c][step]*Math.pow(3,over)), atk=ATK_TABLE[c][step]+over*8;
+ const seed=(ch+1)*31+step*7+Math.floor(Math.random()*9973);
+ const e={kind,name:pick(ENEMY_NAMES[kind]),hp,maxhp:hp,atk,every:step===2?5:6,seed,rule:null};
+ if(step===2){ e.rule=pick(ch===0?RULES.filter(r=>r.id!=='overflow'&&r.id!=='fast'):RULES).id; }
+ return e;
+}
+
+function potFresh(){ return {chips:R.pow,mult:1+(R.talents.drive?2:0),x:1,cards:[],moves:0,active:false}; }
+
+function edRate(){ let r=.05; if(hasCharm('foilpress'))r*=2; if(passive('ophelia'))r*=2; return r; }
+function makeDeck(){
+ const cards=[], rate=edRate();
+ for(let s=0;s<4;s++) for(let r=1;r<=13;r++){
+  const id=s*13+r-1; let ed=R.deckEd[id]||null;
+  if(!ed&&Math.random()<rate) ed=pick(['foil','holo','prism','gold']);
+  cards.push({id,s,r,up:false,ed});
+ }
+ return shuffled(cards);
+}
+function dealBoard(deck){
+ const B={stock:[],waste:[],found:[[],[],[],[]],cols:[[],[],[],[],[],[],[]],pocket:null};
+ let i=0;
+ for(let c=0;c<7;c++) for(let n=0;n<=c;n++){const k=deck[i++];k.up=n===c;B.cols[c].push(k);}
+ B.stock=deck.slice(i);
+ return B;
+}
+
+function startFight(enemy){
+ const e=enemy||R.pending||enemyFor(R.ch,R.step);
+ R.pending=null;
+ let every=e.every;
+ if(e.rule==='fast') every-=2;
+ if(hasCharm('latency')) every+=2;
+ if(passive('iris')) every+=1;
+ F={e,every,tick:every,B:dealBoard(makeDeck()),pot:potFresh(),charge:{},wild:0,free:0,stasis:0,peek:false,
+    rewinds:R.talents.rewind?1:0,shuffles:R.talents.shuffle?1:0,hist:[],over:null,strikes:0,playN:0,redealt:false,stats:{}};
+ for(const p of R.party) F.charge[p.id]=passive('morgan')?Math.floor(skillCost(p.id)/2):0;
+ emit('fight');
+ return F;
+}
+
+/* ---- rule checks ---- */
+const topOf = a => a[a.length-1];
+function canFound(c){ return F.B.found[c.s].length+1===c.r; }
+function canCol(c,col){
+ const t=topOf(F.B.cols[col]);
+ if(!t) return F.wild>0||c.r===13;
+ if(!t.up) return false;
+ return t.r===c.r+1 && (F.wild>0||isRed(t)!==isRed(c));
+}
+function validRun(col,idx){
+ const a=F.B.cols[col];
+ if(idx<0||idx>=a.length||!a[idx].up) return false;
+ for(let i=idx;i<a.length-1;i++){
+  if(a[i].r!==a[i+1].r+1) return false;
+  if(!F.wild&&isRed(a[i])===isRed(a[i+1])) return false;
+ }
+ return true;
+}
+function legalMoves(){
+ const m=[],B=F.B;
+ const srcs=[];
+ if(B.waste.length) srcs.push({t:'waste'});
+ if(B.pocket) srcs.push({t:'pocket'});
+ B.cols.forEach((a,c)=>{ if(a.length) srcs.push({t:'col',c,i:a.length-1}); });
+ for(const s of srcs){ const k=cardAt(s); if(canFound(k)) m.push({kind:'found',src:s}); }
+ B.cols.forEach((a,c)=>{
+  for(let i=0;i<a.length;i++){
+   if(!a[i].up||!validRun(c,i)) continue;
+   for(let d=0;d<7;d++){
+    if(d===c||!canCol(a[i],d)) continue;
+    if(i===0&&!B.cols[d].length) continue;   // shuffling a clean column to an empty one does nothing
+    m.push({kind:'col',src:{t:'col',c,i},dst:d,reveals:i>0&&!a[i-1].up,clears:i===0});
+   }
+  }
+ });
+ for(const t of ['waste','pocket']){
+  const k=t==='waste'?topOf(B.waste):B.pocket;
+  if(k) for(let d=0;d<7;d++) if(canCol(k,d)) m.push({kind:'col',src:{t},dst:d});
+ }
+ return m;
+}
+function cardAt(s){
+ if(s.t==='waste') return topOf(F.B.waste);
+ if(s.t==='pocket') return F.B.pocket;
+ return F.B.cols[s.c][s.i];
+}
+function hasPlay(){
+ if(legalMoves().length) return true;
+ // Could any card in the stock cycle be used?
+ const B=F.B;
+ for(const k of B.stock.concat(B.waste)){
+  if(canFound(k)) return true;
+  for(let d=0;d<7;d++) if(canCol(k,d)) return true;
+ }
+ return false;
+}
+
+/* ---- undo ---- */
+function snap(){
+ F.hist.push(JSON.stringify({B:F.B,pot:F.pot,tick:F.tick,ehp:F.e.hp,wild:F.wild,free:F.free,stasis:F.stasis,hp:R.hp,gold:R.gold,charge:F.charge,strikes:F.strikes,playN:F.playN}));
+ if(F.hist.length>8) F.hist.shift();
+}
+function restore(n){
+ let s=null; while(n-->0&&F.hist.length) s=F.hist.pop();
+ if(!s) return false;
+ const o=JSON.parse(s);
+ Object.assign(F,{B:o.B,pot:o.pot,tick:o.tick,wild:o.wild,free:o.free,stasis:o.stasis,charge:o.charge,strikes:o.strikes,playN:o.playN});
+ F.e.hp=o.ehp;R.hp=o.hp;R.gold=o.gold;
+ emit('rewind');
+ return true;
+}
+
+/* ---- charge and pots ---- */
+function addCharge(n,suit){
+ const cold=F.e.rule==='coldboot';
+ for(const p of R.party){
+  const h=heroOf(p.id); let v=n;
+  if(suit===h.s) v+=1;
+  if(cold) v/=2;
+  F.charge[p.id]=Math.min(skillCost(p.id),F.charge[p.id]+v);
+ }
+}
+function heal(n){
+ const v=Math.min(n,R.maxhp-R.hp); if(v<=0) return;
+ R.hp+=v; emit('heal',{n:v});
+}
+function gold(n,why){ R.gold+=n; emit('gold',{n,why}); }
+
+function afterRemove(col){
+ const a=F.B.cols[col], t=topOf(a);
+ if(t&&!t.up){
+  t.up=true;
+  const p=F.pot; p.active=true; p.chips+=8;
+  if(passive('nao')) p.chips+=10;
+  if(hasCharm('uncover')) p.mult+=2;
+  addCharge(1,-1);
+  emit('reveal',{id:t.id});
+ }
+}
+
+function scoreCard(k){
+ const p=F.pot,rule=F.e.rule;
+ p.active=true; p.cards.push({s:k.s,r:k.r}); F.playN++;
+ let chips=5+k.r, mult=1;
+ if(rule==='nospade'&&k.s===3) chips=0;
+ if(rule==='halfred'&&isRed(k)) chips=Math.floor(chips/2);
+ if(rule==='throttle'&&F.playN%2===0) mult=0;
+ if(rule==='overflow'&&p.cards.length>6) mult=0;
+ if(rule==='nofaces'&&k.r>=11) mult=0;
+ if(k.ed==='foil') chips+=40;
+ if(k.ed==='holo') mult+=6;
+ if(k.ed==='prism') p.x*=1.5;
+ if(k.ed==='gold') gold(2,'Gold card');
+ if(passive('kaede')&&k.s===3) chips+=6;
+ if(passive('valentina')&&k.s===1) mult+=1;
+ if(passive('mina')&&k.s===0) heal(1);
+ if(hasCharm('redthread')&&k.s<2) mult+=1;
+ if(hasCharm('nightink')&&k.s>=2) chips+=10;
+ if(hasCharm('firstcontact')&&p.cards.length===1) chips+=30;
+ if(hasCharm('rootaccess')&&k.r===1){chips+=40;gold(1,'Root Access');}
+ if(hasCharm('luckyseven')&&k.r===7){mult+=7;gold(1,'Lucky Sevens');}
+ if(hasCharm('courtfavor')&&k.r>=11) mult+=4;
+ const hoard=hasCharm('hoard'); if(hoard){hoard.v=(hoard.v||0)+3;}
+ p.chips+=chips; p.mult+=mult;
+ addCharge(1,k.s);
+ // A court card with its heroine in your party gives a small burst.
+ const h=HEROES.find(x=>x.s===k.s&&x.r===k.r);
+ if(h&&inParty(h.id)){ addCharge(1,-1); emit('court',{id:h.id}); }
+ emit('play',{id:k.id,chips,mult,n:p.cards.length,ed:k.ed});
+}
+
+function formInfo(cards){
+ const n=cards.length, suits=new Set(cards.map(c=>c.s)).size;
+ const ranks=[...new Set(cards.map(c=>c.r))].sort((a,b)=>a-b);
+ let run=ranks.length?1:0,cur=1;
+ for(let i=1;i<ranks.length;i++){cur=ranks[i]===ranks[i-1]+1?cur+1:1;run=Math.max(run,cur);}
+ return {n,suits,one:suits===1,run,dup:ranks.length<n,court:[11,12,13].every(r=>ranks.includes(r))};
+}
+function evalForm(cards){
+ const i=formInfo(cards);
+ return FORMS.find(f=>f.f(i));
+}
+function formValue(f){ const l=R.forms[f.id]||0; return {c:f.c+f.uc*l,m:f.m+f.um*l,lv:l+1}; }
+
+function strike(){
+ const p=F.pot;
+ if(!p.active||F.over) return 0;
+ const f=evalForm(p.cards), v=p.cards.length?formValue(f):{c:0,m:0,lv:1}, n=p.cards.length;
+ p.chips+=v.c; p.mult+=v.m;
+ if(hasCharm('overclock')) p.mult+=4;
+ if(hasCharm('heatsink')) p.chips+=30;
+ if(hasCharm('daisy')) p.mult+=n;
+ const ml=hasCharm('ml'), hoard=hasCharm('hoard');
+ if(ml) p.mult+=ml.v||0;
+ if(hoard) p.chips+=hoard.v||0;
+ const empties=F.B.cols.filter(a=>!a.length).length;
+ if(hasCharm('vacancy')&&empties) p.x*=Math.pow(1.5,empties);
+ if(hasCharm('cleanwaste')&&!F.B.waste.length) p.x*=2;
+ if(hasCharm('glass')) p.x*=2;
+ if(hasCharm('coinflip')&&Math.random()<1/3) p.x*=4;
+ if(passive('noir')&&n>=5) p.x*=1.25;
+ if(passive('lucia')&&F.strikes===0) p.x*=2;
+ const dmg=Math.floor(p.chips*p.mult*p.x);
+ F.strikes++;
+ if(ml&&n>=3) ml.v=(ml.v||0)+1;
+ if(hasCharm('payroll')&&n>=3) gold(1,'Payroll');
+ if(hasCharm('lifeline')) heal(2);
+ if(hasCharm('capacitor')) addCharge(1,-1);
+ F.e.hp=Math.max(0,F.e.hp-dmg);
+ emit('strike',{dmg,form:p.cards.length?f.name:'Pot',lv:v.lv,chips:p.chips,mult:p.mult,x:p.x,n});
+ F.pot=potFresh();
+ if(F.e.hp<=0){ F.over='win'; emit('win',{}); return dmg; }
+ if(F.B.found.every(a=>a.length===13)) redealClear();
+ return dmg;
+}
+function redealClear(){
+ F.B=dealBoard(makeDeck());
+ emit('fullclear',{});
+}
+
+function tick(){
+ if(F.stasis>0){F.stasis--;return;}
+ F.tick--;
+ if(F.tick<=0){ F.tick=F.every; attack(); }
+}
+function attack(){
+ let d=F.e.atk;
+ if(hasCharm('glass')) d*=1.5;
+ if(hasCharm('firewall')) d*=.7;
+ d=Math.round(d);
+ R.hp-=d;
+ emit('attack',{d});
+ if(R.hp<=0){
+  if(R.crown){R.crown=false;R.hp=1;emit('saved',{text:'Undying Crown'});return;}
+  if(R.wind){R.wind=false;R.hp=Math.round(R.maxhp/2);emit('saved',{text:'Second Wind'});return;}
+  R.hp=0;F.over='lose';emit('lose',{});
+ }
+}
+
+/* ---- player moves ---- */
+function moveFound(src){
+ if(F.over) return false;
+ const k=cardAt(src);
+ if(!k||!canFound(k)) return false;
+ if(src.t==='col'&&src.i!==F.B.cols[src.c].length-1) return false;
+ snap();
+ if(src.t==='waste') F.B.waste.pop();
+ else if(src.t==='pocket') F.B.pocket=null;
+ else F.B.cols[src.c].pop();
+ F.B.found[k.s].push(k);
+ scoreCard(k);
+ if(src.t==='col') afterRemove(src.c);
+ return true;
+}
+function moveCol(src,dst){
+ if(F.over) return false;
+ const k=cardAt(src);
+ if(!k||!canCol(k,dst)) return false;
+ if(src.t==='col'&&(src.c===dst||!validRun(src.c,src.i))) return false;
+ snap();
+ let moved;
+ if(src.t==='waste') moved=[F.B.waste.pop()];
+ else if(src.t==='pocket'){moved=[F.B.pocket];F.B.pocket=null;}
+ else moved=F.B.cols[src.c].splice(src.i);
+ F.B.cols[dst].push(...moved);
+ if(F.wild>0) F.wild--;
+ if(hasCharm('held')){F.pot.active=true;F.pot.chips+=2;F.pot.mult+=1;}
+ if(src.t==='col') afterRemove(src.c);
+ emit('move',{});
+ return true;
+}
+function movePocket(src){
+ if(F.over||!R.talents.pocket||F.B.pocket) return false;
+ if(src.t==='pocket') return false;
+ if(src.t==='col'&&src.i!==F.B.cols[src.c].length-1) return false;
+ const k=cardAt(src); if(!k) return false;
+ snap();
+ if(src.t==='waste') F.B.waste.pop(); else F.B.cols[src.c].pop();
+ F.B.pocket=k;
+ if(src.t==='col') afterRemove(src.c);
+ emit('move',{});
+ return true;
+}
+function drawCard(){
+ if(F.over) return;
+ snap();
+ const B=F.B, free=F.free>0;
+ if(!free){ strike(); if(F.over) return; }
+ if(!B.stock.length&&B.waste.length){
+  B.stock=B.waste.reverse(); B.waste=[]; B.stock.forEach(k=>k.up=false);
+ }
+ if(B.stock.length){ const k=B.stock.pop(); k.up=true; B.waste.push(k); }
+ emit('draw',{});
+ if(F.e.rule==='phish'&&R.gold>0) R.gold--;
+ if(free) F.free--; else tick();
+}
+function manualStrike(){ if(F.pot.active&&!F.over){ snap(); strike(); } }
+
+/* Re-deal when the board is locked. Costs one enemy attack. */
+function emergencyRedeal(){
+ if(F.over) return;
+ const B=F.B, rest=[...B.stock,...B.waste,...B.cols.flat()];
+ if(B.pocket) rest.push(B.pocket);
+ rest.forEach(k=>k.up=false);
+ const s=shuffled(rest), found=B.found;
+ F.B=rebuild(s,found);
+ F.redealt=true; F.hist=[];
+ emit('redeal',{});
+ attack();
+}
+function rebuild(s,found){
+ const B={stock:[],waste:[],found,cols:[[],[],[],[],[],[],[]],pocket:null};
+ let i=0;
+ for(let c=0;c<7&&i<s.length;c++) for(let n=0;n<=c&&i<s.length;n++){const k=s[i++];k.up=n===c;B.cols[c].push(k);}
+ B.cols.forEach(a=>{ if(a.length) topOf(a).up=true; });
+ B.stock=s.slice(i);
+ return B;
+}
+
+/* Finish all remaining cards as one giant chain. */
+const canFinish = () => !F.over && !F.B.stock.length && !F.B.waste.length && F.B.cols.every(a=>a.every(k=>k.up));
+function finishStep(){
+ const B=F.B, srcs=[];
+ if(B.pocket) srcs.push({t:'pocket'});
+ B.cols.forEach((a,c)=>{ if(a.length) srcs.push({t:'col',c,i:a.length-1}); });
+ for(const s of srcs) if(canFound(cardAt(s))){ moveFound(s); return true; }
+ return false;
+}
+
+/* ---- abilities ---- */
+const skillReady = id => F.charge[id]>=skillCost(id);
+function useSkill(id){
+ if(F.over||!skillReady(id)) return false;
+ const star=inParty(id).stars;
+ const fx={
+  mina(){heal(Math.round(R.maxhp*(.25+.03*star)));},
+  rin(){gold(3+R.ch+1+star,'Lucky Cut');},
+  nao(){F.peek=true;},
+  kaede(){F.pot.active=true;F.pot.chips+=60+star*15;F.pot.mult+=6+star;},
+  seraphine(){heal(Math.round(R.maxhp*.1));F.stasis+=4+star;},
+  valentina(){F.pot.active=true;F.pot.x*=2;},
+  iris(){restore(5);},
+  noir(){excise(2+(star>=3?1:0));},
+  aurelia(){F.wild+=5+star;},
+  ophelia(){F.pot.active=true;F.pot.x*=3;},
+  morgan(){F.free+=5+star;},
+  lucia(){openLane();F.pot.active=true;F.pot.x*=2;},
+ };
+ if(id==='iris'&&!F.hist.length) return false;
+ if(id==='noir'&&F.B.found.every(a=>a.length===13)) return false;
+ F.charge[id]=0;
+ F.hist=id==='iris'?F.hist:[];
+ fx[id]();
+ F.charge[id]=0;
+ emit('skill',{id});
+ return true;
+}
+function excise(n){
+ for(let i=0;i<n;i++){
+  const need=F.B.found.map((a,s)=>({s,r:a.length+1})).filter(x=>x.r<=13).sort((a,b)=>a.r-b.r)[0];
+  if(!need) return;
+  const id=need.s*13+need.r-1, B=F.B;
+  let k=null;
+  for(const pile of [B.stock,B.waste]){const j=pile.findIndex(c=>c.id===id);if(j>=0){k=pile.splice(j,1)[0];}}
+  if(!k&&B.pocket&&B.pocket.id===id){k=B.pocket;B.pocket=null;}
+  let col=-1;
+  if(!k) B.cols.forEach((a,c)=>{const j=a.findIndex(x=>x.id===id);if(j>=0){k=a.splice(j,1)[0];col=c;}});
+  if(!k) return;
+  k.up=true; B.found[k.s].push(k); scoreCard(k);
+  if(col>=0) afterRemove(col);
+ }
+}
+function openLane(){
+ const B=F.B; let best=-1;
+ B.cols.forEach((a,c)=>{ if(a.length&&(best<0||a.length<B.cols[best].length)) best=c; });
+ if(best<0) return;
+ const moved=B.cols[best].splice(0);
+ moved.forEach(k=>k.up=false);
+ B.stock=shuffled(B.stock.concat(moved));
+}
+function useRewind(){ if(F.rewinds>0&&!F.over&&restore(1)){F.rewinds--;return true;} return false; }
+function useShuffle(){
+ if(F.shuffles<=0||F.over) return false;
+ const B=F.B, all=shuffled(B.stock.concat(B.waste));
+ if(all.length<2) return false;
+ F.shuffles--; all.forEach(k=>k.up=false); B.stock=all; B.waste=[]; F.hist=[];
+ emit('shuffle',{}); return true;
+}
+
+/* ---- rewards and shop ---- */
+function settleFight(){
+ const e=F.e, kind=e.kind, lines=[];
+ const base=[3,4,6][R.step]+R.ch; lines.push(['Enemy defeated',base]);
+ const cap=hasCharm('coldwallet')?10:5, interest=Math.min(cap,Math.floor(R.gold/5));
+ if(interest) lines.push(['Interest',interest]);
+ if(passive('rin')) lines.push(['House Tip',2]);
+ if(hasCharm('finisher')) lines.push(['Finisher',3]);
+ const total=lines.reduce((a,l)=>a+l[1],0);
+ R.gold+=total;
+ const xp=(40+R.ch*30)*(R.step===2?2:1), gems=kind==='boss'?50:10;
+ R.xp+=xp;R.gems+=gems;R.kills++; if(kind==='boss')R.bosses++;
+ return {lines,total,xp,gems};
+}
+function nextStep(){
+ R.step++;
+ if(R.step>2){R.step=0;R.ch++;}
+ R.pending=enemyFor(R.ch,R.step);
+ const heal0=Math.round(R.maxhp*.15); R.hp=Math.min(R.maxhp,R.hp+heal0);
+}
+function makeShop(){
+ const own=new Set(R.charms.map(c=>c.id));
+ const pool=shuffled(CHARMS.filter(c=>!own.has(c.id)));
+ const pickRar=()=>{const roll=Math.random(),want=roll<.62?1:roll<.92?2:3;const i=pool.findIndex(c=>c.r===want);return pool.splice(i>=0?i:0,1)[0];};
+ const items=[];
+ for(let i=0;i<3&&pool.length;i++){const c=pickRar();items.push({type:'charm',id:c.id,cost:c.r*3+1+Math.floor(Math.random()*2)});}
+ shuffled(FORMS).slice(0,2).forEach(f=>items.push({type:'patch',id:f.id,cost:3+Math.floor(((R.forms[f.id]||0))*1.5)}));
+ items.push({type:'rest',cost:3},{type:'mod',cost:4});
+ return {items,reroll:2};
+}
+function buy(i){
+ const S=R.shop, it=S.items[i];
+ if(!it||it.sold||R.gold<it.cost) return false;
+ if(it.type==='charm'){ if(R.charms.length>=R.slots) return false; R.charms.push({id:it.id,v:0}); }
+ if(it.type==='patch') R.forms[it.id]=(R.forms[it.id]||0)+1;
+ if(it.type==='rest'){ if(R.hp>=R.maxhp) return false; R.hp=Math.min(R.maxhp,R.hp+Math.round(R.maxhp*.3)); }
+ if(it.type==='mod'){
+  const free=shuffled([...Array(52).keys()].filter(k=>!R.deckEd[k])).slice(0,3);
+  it.got=free.map(k=>{R.deckEd[k]=pick(['foil','holo','prism','gold']);return k;});
+ }
+ R.gold-=it.cost; it.sold=true; return true;
+}
+function sellCharm(i){
+ const c=R.charms[i]; if(!c) return;
+ const d=CHARMS.find(x=>x.id===c.id);
+ R.gold+=Math.ceil((d.r*3+1)/2); R.charms.splice(i,1);
+}
+function reroll(){
+ const S=R.shop; if(R.gold<S.reroll) return false;
+ R.gold-=S.reroll; const cost=S.reroll+1, keep=S.items.filter(x=>x.type==='rest'||x.type==='mod');
+ const n=makeShop(); R.shop={items:n.items.filter(x=>x.type==='charm'||x.type==='patch').concat(keep),reroll:cost};
+ return true;
+}
+
+/* All art is drawn in code, then dithered to a small palette like a 1990s
+   PC-98 visual novel. Nothing here downloads an image. */
+const hex2 = h => [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+const shade = (h,f) => { const c=hex2(h).map(v=>Math.max(0,Math.min(255,Math.round(f>=0?v+(255-v)*f:v*(1+f))))); return '#'+c.map(v=>v.toString(16).padStart(2,'0')).join(''); };
+const BAYER=[0,32,8,40,2,34,10,42,48,16,56,24,50,18,58,26,12,44,4,36,14,46,6,38,60,28,52,20,62,30,54,22,3,35,11,43,1,33,9,41,51,19,59,27,49,17,57,25,15,47,7,39,13,45,5,37,63,31,55,23,61,29,53,21];
+
+function dither(ctx,w,h,pal,spread){
+ const im=ctx.getImageData(0,0,w,h),d=im.data,P=pal.map(hex2),n=P.length;
+ for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+  const i=(y*w+x)*4;
+  if(d[i+3]<128){d[i+3]=0;continue;}
+  const t=(BAYER[(y&7)*8+(x&7)]/64-.5)*spread;
+  const r=d[i]+t,g=d[i+1]+t,b=d[i+2]+t;
+  let best=0,bd=1e9;
+  for(let k=0;k<n;k++){const p=P[k],a=r-p[0],c=g-p[1],e=b-p[2],v=a*a*.9+c*c*1.2+e*e*.8;if(v<bd){bd=v;best=k;}}
+  d[i]=P[best][0];d[i+1]=P[best][1];d[i+2]=P[best][2];d[i+3]=255;
+ }
+ ctx.putImageData(im,0,0);
+}
+function canvas(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
+function P(ctx,str,fill,stroke,lw){ // draw an SVG path string
+ const p=new Path2D(str);
+ if(fill){ctx.fillStyle=fill;ctx.fill(p);}
+ if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke(p);}
+}
+
+const SKIN='#ffe4d2', SKIN2='#f0b9a4', INK='#2a1a3a';
+
+function backHair(c,L){
+ const [hi,mid,dk]=L.hair, g=c.createLinearGradient(0,40,0,250); g.addColorStop(0,mid); g.addColorStop(1,dk);
+ const shapes={
+  long:'M48 92C42 26 158 26 152 92C160 150 168 205 164 250L36 250C32 205 40 150 48 92Z',
+  wave:'M48 92C42 26 158 26 152 92C166 125 150 150 164 180C176 205 160 225 172 250L28 250C40 225 24 205 36 180C50 150 34 125 48 92Z',
+  hime:'M46 92C42 24 158 24 154 92L158 250L42 250Z',
+  bob:'M46 92C42 26 158 26 154 92C160 125 158 158 146 178C132 170 68 170 54 178C42 158 40 125 46 92Z',
+  short:'M50 92C44 30 156 30 150 92C154 118 150 142 142 154L58 154C50 142 46 118 50 92Z',
+  pony:'M50 92C44 30 156 30 150 92C152 120 146 145 142 152L58 152C54 145 48 120 50 92Z',
+  buns:'M50 92C44 30 156 30 150 92C152 120 146 150 140 162L60 162C54 150 48 120 50 92Z',
+  braid:'M50 92C44 30 156 30 150 92C154 125 150 150 144 164L56 164C50 150 46 125 50 92Z',
+ };
+ if(L.back==='pony'){
+  P(c,'M138 44C176 30 196 80 182 130C176 165 186 195 170 232C160 205 150 175 152 140C154 105 146 80 130 66Z',g,dk,1.5);
+  c.fillStyle=L.acc;c.fillRect(132,48,12,10);
+ }
+ if(L.back==='buns'){
+  for(const x of [42,158]){c.beginPath();c.arc(x,118,21,0,7);c.fillStyle=mid;c.fill();c.strokeStyle=dk;c.lineWidth=1.5;c.stroke();
+   P(c,`M${x-12} 110Q${x} 100 ${x+12} 112`,null,hi,3);}
+ }
+ P(c,shapes[L.back],g,dk,1.5);
+}
+function body(c,L){
+ const [o,o2]=L.out, a=L.acc;
+ P(c,'M88 150L88 182L100 196L112 182L112 150Z',SKIN2);          // neck
+ P(c,'M88 158Q100 172 112 158L112 150L88 150Z',shade(SKIN2,-.12));
+ const sh='M14 250C16 216 36 198 84 180L100 200L116 180C164 198 184 216 186 250Z';
+ const g=c.createLinearGradient(0,180,0,250);g.addColorStop(0,o);g.addColorStop(1,o2);
+ P(c,sh,g,shade(o2,-.35),1.5);
+ const fits={
+  coat(){P(c,'M84 178L100 216L70 202L72 186Z',shade(o,.2),shade(o2,-.3),1);P(c,'M116 178L100 216L130 202L128 186Z',shade(o,.2),shade(o2,-.3),1);P(c,'M100 216L100 250',null,shade(o2,-.3),1.5);c.fillStyle=a;c.fillRect(146,214,16,4);c.fillRect(152,208,4,16);},
+  suit(){P(c,'M90 178L100 198L110 178L116 184L100 250L84 184Z','#f2eefa');P(c,'M97 196L103 196L106 232L100 242L94 232Z',a);P(c,'M84 178L100 240L58 208L68 188Z',shade(o,.14),shade(o2,-.4),1);P(c,'M116 178L100 240L142 208L132 188Z',shade(o,.14),shade(o2,-.4),1);},
+  vest(){P(c,'M88 178L100 196L112 178L120 186L100 250L80 186Z','#f2eefa');P(c,'M90 183L100 193L110 183L110 198L100 192L90 198Z',a);P(c,'M78 186L100 250L56 250L60 200Z',shade(o,.1));P(c,'M122 186L100 250L144 250L140 200Z',shade(o,.1));},
+  kimono(){P(c,'M82 178L120 232L150 250L100 250L74 190Z',shade(o,.1),shade(o2,-.3),1);P(c,'M118 178L88 226L70 250L50 250L126 188Z',o,shade(o2,-.3),1);P(c,'M40 236L160 236L164 250L36 250Z',a);},
+  royal(){P(c,'M84 170L100 200L116 170L128 182L100 214L72 182Z',a,shade(a,-.4),1);P(c,'M30 205Q56 196 74 188L66 214Z',a);P(c,'M170 205Q144 196 126 188L134 214Z',a);c.beginPath();c.arc(100,222,7,0,7);c.fillStyle=a;c.fill();c.beginPath();c.arc(100,222,3.5,0,7);c.fillStyle='#fff';c.fill();P(c,'M100 229L100 250',null,a,3);},
+ };
+ fits[L.fit]();
+}
+function face(c,L){
+ P(c,'M61 92C60 126 76 150 100 162C124 150 140 126 139 92C140 54 60 54 61 92Z',SKIN,shade(SKIN2,-.35),1.2);
+ c.save();c.clip(new Path2D('M61 92C60 126 76 150 100 162C124 150 140 126 139 92C140 54 60 54 61 92Z'));
+ if(L.bang!=='parted') P(c,'M58 60L142 60L142 101C120 97 80 97 58 101Z',SKIN2);   // hair shadow
+ c.globalAlpha=.42;c.fillStyle='#ff8fa0';
+ for(const x of [76,124]){c.beginPath();c.ellipse(x,127,9,4,0,0,7);c.fill();}
+ c.globalAlpha=1;c.restore();
+ const m=L.mood, browTilt={calm:0,smile:-1.5,smirk:1,stern:4}[m];
+ for(const sgn of [-1,1]){
+  const x=100+sgn*20,y=112;
+  c.save();c.beginPath();c.ellipse(x,y,12,9,0,0,7);c.clip();
+  c.fillStyle='#fff';c.fillRect(x-14,y-11,28,22);
+  const g=c.createLinearGradient(0,y-10,0,y+9);g.addColorStop(0,shade(L.eye,-.55));g.addColorStop(.55,L.eye);g.addColorStop(1,shade(L.eye,.5));
+  c.fillStyle=g;c.beginPath();c.ellipse(x-sgn,y,8,10,0,0,7);c.fill();
+  c.fillStyle=shade(L.eye,-.75);c.beginPath();c.ellipse(x-sgn,y,3.6,5,0,0,7);c.fill();
+  c.fillStyle='#fff';c.beginPath();c.arc(x-sgn-3,y-4,2.8,0,7);c.fill();c.beginPath();c.arc(x-sgn+3,y+4,1.4,0,7);c.fill();
+  c.restore();
+  // upper lash with a sharp outer wing
+  P(c,`M${x-sgn*-13} ${y-1}Q${x-sgn*-6} ${y-11} ${x+sgn*-12} ${y-7}L${x+sgn*-13} ${y-4}Q${x-sgn*-6} ${y-8} ${x-sgn*-12} ${y+2}Z`,INK,INK,1);
+  P(c,`M${x+sgn*14} ${y-1}L${x+sgn*19} ${y-5}L${x+sgn*14} ${y-5}Z`,INK);
+  P(c,`M${x-9} ${y+9.5}Q${x} ${y+11.5} ${x+9} ${y+9.5}`,null,shade(SKIN2,-.3),1);
+  P(c,`M${x+sgn*12} ${y-17-sgn*0+browTilt*-0.5}Q${x} ${y-21} ${x-sgn*11} ${y-17+browTilt}`,null,shade(L.hair[2],-.1),1.8);
+ }
+ P(c,'M100 128L98 133L101 133',null,shade(SKIN2,-.25),1);
+ const mouths={calm:'M95 145Q100 146.5 105 145',smile:'M92 143Q100 150 108 143',smirk:'M93 146Q102 147 108 141',stern:'M94 146L106 145'};
+ P(c,mouths[m],null,'#b0485e',1.6);
+}
+function frontHair(c,L){
+ const [hi,mid,dk]=L.hair, g=c.createLinearGradient(0,30,0,120); g.addColorStop(0,hi); g.addColorStop(.5,mid); g.addColorStop(1,shade(mid,-.12));
+ const bangs={
+  blunt:'M54 104C44 28 156 28 146 104L140 100L132 96L120 98L108 95L96 98L84 95L72 98L60 96Z',
+  swept:'M54 112C42 26 158 26 146 112C142 92 136 80 122 68C112 88 88 100 66 96C62 102 58 106 54 112Z',
+  parted:'M52 128C42 26 158 26 148 128C146 104 136 82 104 58C100 62 98 62 96 58C64 82 54 104 52 128Z',
+  messy:'M52 112C42 26 158 26 148 112L142 92L134 104L126 84L116 100L106 82L96 102L86 84L76 102L68 88L60 104Z',
+ };
+ P(c,bangs[L.bang],g,dk,1.5);
+ c.save();c.clip(new Path2D(bangs[L.bang]));
+ P(c,'M66 58Q100 40 134 58Q100 50 66 62Z',shade(hi,.45));                    // shine band
+ for(const [a,b] of [[76,92],[100,84],[124,96]]) P(c,`M${a} 46Q${a-4} 70 ${b} ${b}`,null,dk,.8);
+ c.restore();
+ if(L.back==='hime'||L.back==='wave'||L.back==='long'){
+  P(c,'M56 92C50 130 54 160 50 196C60 180 66 140 64 100Z',mid,dk,1);
+  P(c,'M144 92C150 130 146 160 150 196C140 180 134 140 136 100Z',mid,dk,1);
+ }
+ if(L.back==='bob'){P(c,'M52 100C46 130 50 150 56 170C64 150 66 125 62 100Z',mid,dk,1);P(c,'M148 100C154 130 150 150 144 170C136 150 134 125 138 100Z',mid,dk,1);}
+ if(L.back==='braid'){
+  P(c,'M56 96C50 126 54 146 60 160C66 140 66 120 64 100Z',mid,dk,1);
+  for(let i=0;i<6;i++){const y=124+i*17,x=140+Math.sin(i)*3+i*2;c.beginPath();c.ellipse(x,y,12-i*.8,10,.3,0,7);c.fillStyle=i%2?mid:hi;c.fill();c.strokeStyle=dk;c.lineWidth=1;c.stroke();}
+  c.fillStyle=L.acc;c.fillRect(146,226,14,6);
+ }
+}
+function extras(c,L){
+ const a=L.acc;
+ for(const e of L.extra||[]){
+  if(e==='glasses'){for(const x of [80,120]){c.strokeStyle=INK;c.lineWidth=1.8;c.strokeRect(x-14,102,28,20);}P(c,'M94 110L106 110',null,INK,1.8);c.fillStyle='#ffffff30';c.fillRect(67,103,26,18);c.fillRect(107,103,26,18);}
+  if(e==='pin'){P(c,'M120 66L142 60L140 67L122 72Z',a);P(c,'M122 74L144 67L142 74L124 79Z','#fff');}
+  if(e==='ring'){c.strokeStyle=a;c.lineWidth=2.5;c.beginPath();c.arc(146,108,8,1.2,5.4);c.stroke();}
+  if(e==='scar'){P(c,'M122 120L134 134',null,'#c97080',1.4);}
+  if(e==='earring'){for(const x of [58,142]){P(c,`M${x} 126L${x-4} 138L${x} 150L${x+4} 138Z`,a,shade(a,-.4),1);}}
+  if(e==='visor'){c.fillStyle='#0e0d20';P(c,'M58 104L142 104L140 120L100 124L60 120Z','#120f22ee',a,1.5);P(c,'M70 112L90 112M110 112L130 112',null,a,3);}
+  if(e==='halo'){c.strokeStyle=a;c.lineWidth=4;c.beginPath();c.ellipse(100,28,46,11,0,0,7);c.stroke();c.strokeStyle='#fff';c.lineWidth=1.2;c.stroke();}
+  if(e==='crown'){P(c,'M70 54L66 26L84 42L100 18L116 42L134 26L130 54Q100 44 70 54Z',a,shade(a,-.45),1.5);c.fillStyle='#fff';c.beginPath();c.arc(100,40,4,0,7);c.fill();c.fillStyle=L.eye;c.beginPath();c.arc(100,40,2.4,0,7);c.fill();}
+ }
+}
+const SUIT_BG=[['#54133f','#8d1f55'],['#5a3312','#a06a18'],['#0f3b45','#1c6f6a'],['#1a1a4a','#3a3390']];
+function heroCanvas(h,w){
+ const H=Math.round(w*1.25),cv=canvas(w,H),c=cv.getContext('2d',{willReadFrequently:true}),L=h.look,[b1,b2]=SUIT_BG[h.s];
+ c.save();c.scale(w/200,H/250);
+ const g=c.createLinearGradient(0,0,0,250);g.addColorStop(0,b1);g.addColorStop(1,b2);c.fillStyle=g;c.fillRect(0,0,200,250);
+ c.globalAlpha=.25;c.fillStyle=L.acc;c.beginPath();c.arc(100,100,88,0,7);c.fill();c.globalAlpha=.5;c.strokeStyle='#ffffff';c.lineWidth=1;
+ for(let i=0;i<4;i++){c.beginPath();c.arc(100,100,60+i*18,0,7);c.stroke();}c.globalAlpha=1;
+ c.font='bold 44px serif';c.fillStyle='#ffffff30';c.fillText(SUITS[h.s],14,50);
+ backHair(c,L);body(c,L);face(c,L);frontHair(c,L);extras(c,L);
+ c.restore();
+ const pal=[...new Set([b1,b2,shade(b2,.25),L.acc,shade(L.acc,.4),SKIN,SKIN2,shade(SKIN2,-.3),'#ffffff',INK,...L.hair,shade(L.hair[0],.45),L.eye,shade(L.eye,-.55),shade(L.eye,.5),L.out[0],L.out[1],shade(L.out[1],-.35),'#f2eefa','#b0485e'])];
+ dither(c,w,H,pal,26);
+ return cv;
+}
+const artCache={};
+function heroImg(id,size='big'){
+ const key=id+size; if(artCache[key]) return artCache[key];
+ if(CUSTOM_ART[id]) return artCache[key]=CUSTOM_ART[id];
+ return artCache[key]=heroCanvas(heroOf(id),size==='big'?160:64).toDataURL();
+}
+
+/* Rogue programs: symmetrical pixel monsters grown from a seed. */
+function enemyImg(seed,kind){
+ const n=kind==='boss'?16:12,cv=canvas(n,n),c=cv.getContext('2d');
+ let s=seed*9301+49297; const rnd=()=>(s=(s*9301+49297)%233280)/233280;
+ const hue=Math.floor(rnd()*360),col=[`hsl(${hue} 80% 62%)`,`hsl(${hue+40} 70% 40%)`,`hsl(${hue-40} 90% 75%)`];
+ for(let y=0;y<n;y++) for(let x=0;x<n/2;x++){
+  const d=Math.abs(y-n/2)/(n/2),on=rnd()<(.72-d*.42-(n/2-x)/n*.1+(x>n/4?.2:0));
+  if(!on) continue;
+  c.fillStyle=col[rnd()<.6?0:rnd()<.6?1:2];c.fillRect(x,y,1,1);c.fillRect(n-1-x,y,1,1);
+ }
+ const ey=Math.floor(n*.42),ex=Math.floor(n*.3);
+ c.fillStyle='#fff';c.fillRect(ex,ey,2,2);c.fillRect(n-ex-2,ey,2,2);c.fillStyle='#1a0f2e';c.fillRect(ex+1,ey+1,1,1);c.fillRect(n-ex-2,ey+1,1,1);
+ return cv.toDataURL();
+}
+
+/* Backgrounds: each one is a tiny dithered painting. */
+const BG_PAL={
+ lounge:['#1a0f2e','#2c1548','#4a1c5e','#7a2a68','#c0417a','#ffc94f'],
+ city:['#0c1030','#1a1c54','#34307e','#6a3f9e','#ff5fa8','#4fe3d9','#ffe25a'],
+ sea:['#071028','#0e2148','#1b3f74','#3a6fa8','#a8d8e8','#fff6d0'],
+ forest:['#071a18','#0d2f2a','#17514a','#2a8a70','#4fe3a8','#c8ffe0'],
+ shrine:['#1e1038','#4a1c52','#a33a54','#f07a48','#ffc268','#201030'],
+ sakura:['#2a3a78','#5a6cc0','#a8b0ec','#ffc2d6','#ff8fb4','#fff0f5','#3a2a4c'],
+ orbit:['#04040f','#10103a','#2a2a72','#4f7ae8','#9ad8ff','#ffffff','#ff8f5a'],
+ void:['#060410','#160a2c','#3a0f5c','#8a1f8f','#ff3b8d','#7ff5ea'],
+};
+function bgImg(id){
+ const key='bg'+id; if(artCache[key]) return artCache[key];
+ const w=320,h=180,cv=canvas(w,h),c=cv.getContext('2d',{willReadFrequently:true}),p=BG_PAL[id];
+ let s=id.length*977+id.charCodeAt(0)*31; const rnd=()=>(s=(s*9301+49297)%233280)/233280;
+ const sky=(stops)=>{const g=c.createLinearGradient(0,0,0,h);stops.forEach((x,i)=>g.addColorStop(i/(stops.length-1),x));c.fillStyle=g;c.fillRect(0,0,w,h);};
+ const stars=(n,col)=>{c.fillStyle=col;for(let i=0;i<n;i++)c.fillRect(rnd()*w|0,rnd()*h*.7|0,1,1);};
+ const glow=(x,y,r,col)=>{const g=c.createRadialGradient(x,y,1,x,y,r);g.addColorStop(0,col);g.addColorStop(1,col+'00');c.fillStyle=g;c.fillRect(0,0,w,h);};
+ const scenes={
+  lounge(){sky([p[0],p[1],p[1],p[2]]);glow(160,20,110,p[3]);for(let x=8;x<w;x+=34){c.fillStyle=p[0];c.fillRect(x,0,10,h);c.fillStyle=p[2];c.fillRect(x+10,0,2,h);}for(const x of [60,160,260]){glow(x,34,22,p[4]);c.fillStyle=p[5];c.beginPath();c.arc(x,34,4,0,7);c.fill();}c.fillStyle=p[0];c.fillRect(0,150,w,30);},
+  city(){sky([p[0],p[2],p[3],p[4]]);stars(40,p[5]);for(let l=0;l<3;l++){let x=0;while(x<w){const bw=16+rnd()*26|0,bh=50+rnd()*(90-l*20)|0;c.fillStyle=p[2-l];c.fillRect(x,h-bh,bw,bh);for(let wy=h-bh+4;wy<h;wy+=7)for(let wx=x+3;wx<x+bw-3;wx+=6)if(rnd()<.32){c.fillStyle=rnd()<.5?p[5]:p[6];c.fillRect(wx,wy,2,3);}x+=bw+2;}}c.strokeStyle=p[5]+'66';for(let i=0;i<70;i++){const x=rnd()*w,y=rnd()*h;c.beginPath();c.moveTo(x,y);c.lineTo(x-3,y+9);c.stroke();}},
+  sea(){sky([p[0],p[1],p[2]]);stars(70,p[4]);c.fillStyle=p[5];c.beginPath();c.arc(230,44,18,0,7);c.fill();glow(230,44,70,p[4]);const g=c.createLinearGradient(0,100,0,h);g.addColorStop(0,p[2]);g.addColorStop(1,p[0]);c.fillStyle=g;c.fillRect(0,100,w,80);for(let i=0;i<80;i++){c.fillStyle=i%3?p[3]:p[4];const y=102+rnd()*78,o=(y-100)*.6;c.fillRect(230-o-rnd()*14+rnd()*o*2,y,6+rnd()*14,1);}},
+  forest(){sky([p[0],p[1],p[2]]);glow(160,90,130,p[3]);for(let l=0;l<3;l++)for(let i=0;i<9-l*2;i++){const x=i*(44+l*20)+rnd()*20-6,tw=14+l*10;c.fillStyle=p[2-l];c.fillRect(x,0,tw,h);for(let y=8;y<h;y+=11){if(rnd()<.6){c.fillStyle=rnd()<.4?p[5]:p[4];c.fillRect(x+3+rnd()*(tw-6),y,2,2);}}}c.fillStyle=p[0];c.fillRect(0,158,w,22);},
+  shrine(){sky([p[0],p[1],p[2],p[3],p[4]]);c.fillStyle=p[4];c.beginPath();c.arc(160,112,30,0,7);c.fill();c.fillStyle=p[5];c.fillRect(0,132,w,48);c.fillRect(104,50,112,8);c.fillRect(98,44,124,6);c.fillRect(116,68,88,5);c.fillRect(122,50,10,84);c.fillRect(188,50,10,84);},
+  sakura(){sky([p[0],p[1],p[2],p[3]]);c.fillStyle=p[6];c.beginPath();c.ellipse(120,200,240,64,0,0,7);c.fill();P(c,'M56 150C60 110 50 90 70 60M66 96Q90 80 112 86M64 76Q44 66 30 74',null,p[6],6);for(let i=0;i<260;i++){c.fillStyle=rnd()<.5?p[3]:p[4];const a=rnd()*7,r=rnd()*70;c.fillRect(70+Math.cos(a)*r*1.3,66+Math.sin(a)*r*.7,3,2);}for(let i=0;i<60;i++){c.fillStyle=p[5];c.fillRect(rnd()*w,rnd()*h,2,1);}},
+  orbit(){sky([p[0],p[1]]);stars(160,p[5]);c.fillStyle=p[3];c.beginPath();c.arc(250,190,90,0,7);c.fill();glow(250,190,120,p[4]);c.fillStyle=p[2];c.beginPath();c.arc(262,204,88,0,7);c.fill();c.fillStyle=p[0];c.fillRect(0,0,26,h);c.fillRect(0,0,w,14);c.fillStyle=p[2];c.fillRect(26,0,3,h);c.fillRect(0,14,w,3);c.fillStyle=p[6];for(let y=30;y<h;y+=26)c.fillRect(8,y,8,3);},
+  void(){sky([p[0],p[1],p[0]]);for(let i=0;i<7;i++){c.strokeStyle=[p[2],p[3],p[4],p[5]][i%4];c.lineWidth=1+i%2;c.beginPath();c.ellipse(160,90,40+i*26,12+i*9,.15*i,0,7);c.stroke();}c.fillStyle='#000';c.beginPath();c.arc(160,90,26,0,7);c.fill();glow(160,90,60,p[4]);c.fillStyle='#000';c.beginPath();c.arc(160,90,20,0,7);c.fill();stars(120,p[5]);},
+ };
+ scenes[id]();
+ dither(c,w,h,p,48);
+ return artCache[key]=cv.toDataURL();
+}
+
+/* Skin CSS is generated from the data tables. */
+function skinCss(){
+ let s='';
+ for(const k of SKINS) s+=`.sk-${k.id}{--cbg:${k.pat?k.pat+',':''}${k.bg};--ck:${k.k};--cr:${k.r}}\n`;
+ for(const b of BACKS) s+=`.bk-${b.id}{--bk:${b.css};--bkm:${b.mark}}\n`;
+ return s;
+}
+
+/* Screens, save data, gacha and input. */
+const KEY='patience-protocol-v1';
+const $=(q,e=document)=>e.querySelector(q);
+const fmtN=n=>Math.round(n).toLocaleString('en-US');
+const fmt=t=>t.replace(/([+×]?\$?[\d.]+ Chips|\bChips\b)/g,'<span class="chips">$1</span>').replace(/([+×][\d.]+ Mult|\bMult\b)/g,'<span class="mult">$1</span>').replace(/(\+?\$\d+)/g,'<span class="money">$1</span>');
+const cap=s=>s[0].toUpperCase()+s.slice(1);
+
+function fresh(){return{v:1,gems:900,lv:1,xp:0,heroes:{mina:{lv:1,xp:0,stars:0},kaede:{lv:1,xp:0,stars:0}},party:['mina','kaede'],
+ skins:['paper'],backs:['court'],bgs:['lounge'],equip:{skin:'paper',back:'court',bg:'lounge',cards:{}},
+ pity:0,quests:{},stats:{kills:0,bosses:0,best:0,chain:0,pulls:0,clears:0},daily:'',tut:false,mute:false,run:null};}
+function load(){
+ try{const t=localStorage.getItem(KEY);if(t){const o=JSON.parse(t),f=fresh();return{...f,...o,stats:{...f.stats,...o.stats},equip:{...f.equip,...o.equip}};}}catch(e){}
+ return fresh();
+}
+function save(){
+ S.run=R?{R,F:F?{...F,hist:[]}:null}:null;
+ try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+}
+let S=load();
+if(S.run){R=S.run.R;F=S.run.F;if(F&&F.over)F=null;if(!F&&R.at==='battle')R.at='map';}
+
+/* ---- progression ---- */
+const xpNeed=l=>100+40*l;
+const heroNeed=l=>60+40*l;
+const talents=()=>{const t={};for(const l in LEVEL_REWARDS)if(LEVEL_REWARDS[l].talent&&+l<=S.lv)t[LEVEL_REWARDS[l].talent]=true;return t;};
+function grant(kind,id){ // returns gems refunded if already owned
+ const list={skin:S.skins,back:S.backs,bg:S.bgs}[kind];
+ if(list.includes(id)) return 30;
+ list.push(id);return 0;
+}
+function rewardText(r){
+ if(r.gems) return r.gems+' gems';
+ if(r.talent) return 'Ability: '+TALENTS[r.talent].n;
+ if(r.skin) return 'Card skin: '+SKINS.find(x=>x.id===r.skin).n;
+ if(r.bg) return 'Background: '+BGS.find(x=>x.id===r.bg).n;
+ if(r.back) return 'Card back: '+BACKS.find(x=>x.id===r.back).n;
+ return '';
+}
+function addXP(n){
+ const got=[];S.xp+=n;
+ while(S.xp>=xpNeed(S.lv)){
+  S.xp-=xpNeed(S.lv);S.lv++;
+  const r=LEVEL_REWARDS[S.lv]||{gems:150};
+  if(r.gems)S.gems+=r.gems;
+  for(const k of ['skin','bg','back'])if(r[k])S.gems+=grant(k,r[k]);
+  got.push(`Level ${S.lv}: ${rewardText(r)}`);
+ }
+ return got;
+}
+function addHeroXP(n){
+ const ups=[];
+ for(const id of S.party){
+  const h=S.heroes[id];h.xp+=n;
+  while(h.lv<10&&h.xp>=heroNeed(h.lv)){h.xp-=heroNeed(h.lv);h.lv++;
+   if(h.lv===3)ups.push(`${heroOf(id).name} unlocked ${heroOf(id).passive[0]}`);
+   if(h.lv===6)ups.push(`${heroOf(id).name}'s skill now costs 2 less charge`);
+  }
+ }
+ return ups;
+}
+const questsReady=()=>QUESTS.filter(q=>!S.quests[q.id]&&q.f(S.stats));
+const today=()=>new Date().toISOString().slice(0,10);
+
+/* ---- gacha ---- */
+function poolOf(rar){
+ return [...HEROES.filter(h=>h.rar===rar).map(h=>({kind:'hero',id:h.id,rar,n:h.name})),
+  ...SKINS.filter(x=>x.rar===rar&&x.id!=='paper').map(x=>({kind:'skin',id:x.id,rar,n:x.n})),
+  ...BACKS.filter(x=>x.rar===rar&&x.id!=='court').map(x=>({kind:'back',id:x.id,rar,n:x.n})),
+  ...BGS.filter(x=>x.rar===rar&&x.id!=='lounge').map(x=>({kind:'bg',id:x.id,rar,n:x.n}))];
+}
+function rollOne(atLeastSR){
+ S.pity++;S.stats.pulls++;
+ const v=Math.random();let rar=v<.03?'SSR':v<.18?'SR':'R';
+ if(S.pity>=PITY)rar='SSR'; else if(atLeastSR&&rar==='R')rar='SR';
+ if(rar==='SSR')S.pity=0;
+ const heroBias=Math.random()<.5, pool=poolOf(rar), heroes=pool.filter(p=>p.kind==='hero');
+ const it={...pick(heroBias?heroes:pool)};
+ if(it.kind==='hero'){
+  const h=S.heroes[it.id];
+  if(!h){S.heroes[it.id]={lv:1,xp:0,stars:0};it.isNew=true;}
+  else if(h.stars<5){h.stars++;it.note=`Star ${h.stars}`;}
+  else{S.gems+=60;it.note='+60 gems';}
+ }else{
+  const g=grant(it.kind,it.id)*({R:1,SR:2,SSR:5}[rar]);
+  if(g){S.gems+=g;it.note=`+${g} gems`;}else it.isNew=true;
+ }
+ return it;
+}
+
+/* ---- audio ---- */
+let ac=null;
+function tone(f,d=.08,type='square',v=.035,when=0){
+ if(S.mute)return;
+ try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();
+  const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+when;
+  o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0005,t+d);
+  o.connect(g).connect(ac.destination);o.start(t);o.stop(t+d);}catch(e){}
+}
+const arp=(fs,gap=.07)=>fs.forEach((f,i)=>tone(f,.13,'square',.04,i*gap));
+
+/* ---- shell ---- */
+let SC='home',studioTab='cards',studioTarget='all',partyPick=0;
+const scr=()=>$('#scr');
+function wall(id,dim){const w=$('#wall');w.style.backgroundImage=`url(${bgImg(id||S.equip.bg)})`;w.classList.toggle('dim',!!dim);}
+function chrome(body){
+ const dot=questsReady().length||S.daily!==today();
+ const tab=(id,l)=>`<button data-a="go:${id}" class="${SC===id?'on':''}">${l}${id==='rewards'&&dot?'<i class="dot"></i>':''}</button>`;
+ scr().innerHTML=`<div id="top" class="gutter"><span class="lvl">LV ${S.lv}</span><div class="xpbar" title="Experience"><i style="width:${S.xp/xpNeed(S.lv)*100}%"></i></div><span class="gems num">${fmtN(S.gems)} gems</span><button class="tb" data-a="mute" aria-label="Toggle sound">${S.mute?'Sound off':'Sound on'}</button></div>
+ ${body}
+ <nav id="tabs">${tab('home','Home')}${tab('summon','Summon')}${tab('party','Party')}${tab('studio','Studio')}${tab('rewards','Rewards')}</nav>`;
+}
+function modal(html,cls=''){closeModal();const m=document.createElement('div');m.id='modal';m.className='gutter';m.innerHTML=`<div class="dlg win ${cls}">${html}</div>`;document.body.append(m);return m;}
+function closeModal(){const m=$('#modal');if(m)m.remove();}
+function toast(t){const o=$('.toast');if(o)o.remove();const d=document.createElement('div');d.className='toast';d.innerHTML=t;document.body.append(d);setTimeout(()=>d.remove(),2200);}
+function go(n,arg){SC=n;Screens[n](arg);}
+
+const Screens={
+ home(){
+  wall();
+  const lead=heroOf(S.party[0]),cont=!!R;
+  chrome(`<div class="home gutter"><h1 class="logo">Patience<br>Protocol<small>Solitaire. Strikes. Twelve rogue AIs.</small></h1>
+   <div class="stage"><img class="px" src="${heroImg(lead.id)}" alt="${lead.name}, ${lead.title}"><div class="speech"><b>${lead.name}</b> ${lead.line}</div></div>
+   <div class="homebtn"><button class="btn go" data-a="${cont?'resume':'newrun'}">${cont?'Continue run':'Start run'}</button>${cont?'<button class="btn" data-a="abandon">Abandon run</button>':''}<button class="btn gold" data-a="go:summon">Summon</button></div></div>`);
+ },
+ party(){
+  wall(null,true);
+  const slots=[0,1,2].map(i=>{const id=S.party[i],h=id&&heroOf(id);return h?`<button class="tile ${h.rar}${partyPick===i?' sel':''}" data-a="slot:${i}"><img class="px" src="${heroImg(id)}" alt=""><span class="tn">${h.name}<span class="num">Lv${S.heroes[id].lv}</span></span>${i===0?'<span class="mk">Lead</span>':''}</button>`:`<button class="tile${partyPick===i?' sel':''}" data-a="slot:${i}" style="justify-content:center;align-items:center;aspect-ratio:4/5"><span class="dim">Empty</span></button>`;}).join('');
+  const grid=HEROES.map(h=>{const o=S.heroes[h.id];return `<button class="tile ${h.rar}${o?'':' off'}" data-a="hero:${h.id}"><img class="px" src="${heroImg(h.id)}" alt=""><span class="tn">${o?h.name:'???'}<span>${RANKS[h.r]}${SUITS[h.s]}</span></span>${S.party.includes(h.id)?'<span class="mk">In</span>':''}</button>`;}).join('');
+  chrome(`<div class="scroll gutter"><div class="wrapw"><div class="win"><div class="bar"><span>Party</span><span>Pick a slot, then a heroine</span></div><div style="padding:8px;max-width:420px"><div class="slots">${slots}</div></div></div>
+  <h2>The Court <span class="dim num" style="font-size:16px">${Object.keys(S.heroes).length}/12</span></h2><div class="grid">${grid}</div>
+  <p class="dim" style="margin:0">Each heroine is a face card in your deck. Playing her card while she's in your party charges every ability.</p></div></div>`);
+ },
+ summon(){
+  wall(null,true);
+  const feat=['aurelia','lucia','morgan','ophelia'].map(i=>`<img class="px" src="${heroImg(i)}" alt="">`).join('');
+  chrome(`<div class="scroll gutter"><div class="wrapw"><div class="win banner"><div class="bar"><span>Court Summon</span><span class="num">SSR in ${PITY-S.pity} at most</span></div><div class="bnr">${feat}</div>
+  <div style="padding:10px;display:flex;flex-direction:column;gap:10px"><div class="btnrow"><button class="btn" data-a="pull:1" ${S.gems<G_PULL?'disabled':''}>Summon ×1 · ${G_PULL} gems</button><button class="btn go" data-a="pull:10" ${S.gems<G_TEN?'disabled':''}>Summon ×10 · ${G_TEN} gems</button></div>
+  <p class="dim" style="margin:0">Odds: SSR 3%, SR 15%, R 82%. Ten-pulls include at least one SR. Summons give heroines, card skins, card backs and backgrounds. Repeat heroines gain a star. Repeat cosmetics refund gems. Gems come from play only, so there's nothing to buy.</p></div></div></div></div>`);
+ },
+ studio(){
+  wall(null,true);
+  const seg=[['cards','Card skins'],['backs','Card backs'],['bgs','Backgrounds']].map(([k,l])=>`<button class="${studioTab===k?'on':''}" data-a="stab:${k}">${l}</button>`).join('');
+  let body='';
+  if(studioTab==='cards'){
+   const tg=[['all','Whole deck'],['s0',SUITS[0]],['s1',SUITS[1]],['s2',SUITS[2]],['s3',SUITS[3]]].map(([k,l])=>`<button class="${studioTarget===k?'on':''}" data-a="tgt:${k}">${l}</button>`).join('');
+   let cg='';
+   for(let s=0;s<4;s++)for(let r=1;r<=13;r++){const id=s*13+r-1;cg+=`<button class="mini sk-${skinOf(id)}${s<2?' red':''}${studioTarget==='c'+id?' sel':''}" data-a="tgt:c${id}" aria-label="${RANKS[r]} of ${SUIT_NAMES[s]}">${RANKS[r]}${SUITS[s]}</button>`;}
+   const sw=SKINS.map(k=>{const own=S.skins.includes(k.id);return `<button class="swatch${own?'':' off'}${activeSkin()===k.id?' on':''}" data-a="${own?'skin:'+k.id:'locked'}"><div class="thumb sk-${k.id}" style="background:var(--cbg);color:var(--ck)">Q<span style="color:var(--cr)">${SUITS[0]}</span></div><span>${own?k.n:'Locked'}</span></button>`;}).join('');
+   body=`<div class="seg">${tg}</div><p class="dim" style="margin:0">Pick whole deck, a suit, or tap any single card below. Then pick a skin.</p><div class="cwrap"><div class="cgrid">${cg}</div></div><div class="grid">${sw}</div>${Object.keys(S.equip.cards).length?'<button class="btn" data-a="clearskins">Clear single-card skins</button>':''}`;
+  }else if(studioTab==='backs'){
+   body=`<div class="grid">${BACKS.map(b=>{const own=S.backs.includes(b.id);return `<button class="swatch${own?'':' off'}${S.equip.back===b.id?' on':''}" data-a="${own?'back:'+b.id:'locked'}"><div class="thumb bk-${b.id}" style="background:var(--bk)"></div><span>${own?b.n:'Locked'}</span></button>`;}).join('')}</div>`;
+  }else{
+   body=`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${BGS.map(b=>{const own=S.bgs.includes(b.id);return `<button class="swatch wide${own?'':' off'}${S.equip.bg===b.id?' on':''}" data-a="${own?'bg:'+b.id:'locked'}"><div class="thumb" style="background-image:url(${bgImg(b.id)})"></div><span>${own?b.n:'Locked'}</span></button>`;}).join('')}</div>`;
+  }
+  chrome(`<div class="scroll gutter"><div class="wrapw"><div class="seg">${seg}</div>${body}</div></div>`);
+ },
+ rewards(){
+  wall(null,true);
+  const daily=S.daily===today();
+  const q=QUESTS.map(x=>{const done=S.quests[x.id],ok=x.f(S.stats);return `<div class="trow ${done?'got':ok?'next':''}"><span class="gems chips num">${x.g}</span><span>${x.n}</span>${done?'<span class="dim">Done</span>':ok?`<button class="btn gold" data-a="quest:${x.id}">Claim</button>`:'<span class="dim">Open</span>'}</div>`;}).join('');
+  let t='';
+  for(let l=2;l<=25;l++){const r=LEVEL_REWARDS[l];t+=`<div class="trow ${l<=S.lv?'got':l===S.lv+1?'next':''} ${r.talent?'ability':''}"><span class="num">Lv ${l}</span><span>${rewardText(r)}${r.talent?`<br><span class="dim">${TALENTS[r.talent].t}</span>`:''}</span><span class="dim">${l<=S.lv?'Got':''}</span></div>`;}
+  chrome(`<div class="scroll gutter"><div class="wrapw"><div class="win"><div class="bar"><span>Daily login</span></div><div style="padding:8px"><button class="btn gold" data-a="daily" ${daily?'disabled':''} style="width:100%">${daily?'Claimed. Back tomorrow':'Claim 100 gems'}</button></div></div>
+  <h2>Quests</h2><div class="track">${q}</div><h2>Level track</h2><div class="track">${t}</div>
+  <div class="win"><div class="bar"><span>Save data</span></div><div style="padding:8px" class="btnrow"><button class="btn" data-a="savecopy">Copy save code</button><button class="btn" data-a="saveload">Load save code</button><button class="btn" data-a="wipe">Erase save</button></div></div></div></div>`);
+ },
+ map(){
+  wall(null,true);
+  const e=R.pending,cn=CHAPTERS[Math.min(R.ch,3)]+(R.ch>3?` +${R.ch-3}`:'');
+  const nodes=[0,1,2].map(i=>{const st=i<R.step?'done':i===R.step?'now':'',now=i===R.step,k=['minion','elite','boss'][i];
+   return `<div class="node win ${st}">${now?`<img src="${enemyImg(e.seed,e.kind)}" alt="">`:'<div style="height:56px;display:flex;align-items:center" class="dim">'+(i<R.step?'Cleared':'?')+'</div>'}<b style="font-family:var(--disp);font-weight:500">${now?e.name:cap(k)}</b><span class="dim num">${now?fmtN(e.hp)+' HP':''}</span></div>`;}).join('');
+  const rule=e.rule?RULES.find(r=>r.id===e.rule).n:'';
+  scr().innerHTML=`<div class="scroll gutter"><div class="wrapw"><div class="win"><div class="bar"><span>Chapter ${R.ch+1}: ${cn}</span><span class="num">$${R.gold}</span></div><div style="padding:8px;display:flex;flex-direction:column;gap:8px"><div class="nodes">${nodes}</div>
+  ${rule?`<div class="ab"><b>Boss rule</b> ${rule}</div>`:''}<div class="dim num">Hits for ${e.atk} every ${e.every+(e.rule==='fast'?-2:0)+(hasCharm('latency')?2:0)+(passive('iris')?1:0)} draws</div>
+  <div class="hp us"><i style="width:${R.hp/R.maxhp*100}%"></i><span>${R.hp}/${R.maxhp} HP</span></div>
+  <button class="btn go" data-a="fight">Fight</button></div></div>
+  <div class="win"><div class="bar"><span>Charms ${R.charms.length}/${R.slots}</span></div><div style="padding:8px"><div class="bag">${R.charms.map((c,i)=>`<button data-a="charminfo:${i}">${CHARMS.find(x=>x.id===c.id).n}</button>`).join('')||'<span class="dim">None yet. Buy them in the shop.</span>'}</div></div></div>
+  <div class="btnrow"><button class="btn" data-a="forms">Strike patterns</button><button class="btn" data-a="help">How to play</button><button class="btn" data-a="go:home">Back to menu</button></div></div></div>`;
+ },
+ shop(){
+  wall(null,true);
+  const items=R.shop.items.map((it,i)=>{
+   let n,d;
+   if(it.type==='charm'){const c=CHARMS.find(x=>x.id===it.id);n=c.n;d=c.t;}
+   if(it.type==='patch'){const f=FORMS.find(x=>x.id===it.id);n=`Patch: ${f.name}`;d=`Lv ${(R.forms[f.id]||0)+2}. +${f.uc} Chips and +${f.um} Mult. Needs ${f.test}.`;}
+   if(it.type==='rest'){n='Recharge';d='Heal 30% of party HP.';}
+   if(it.type==='mod'){n='Deck Mod';d='3 random cards become special for this run.';}
+   return `<div class="sitem win ${it.sold?'sold':''}"><b>${n}</b><p>${fmt(d)}</p><button class="btn ${R.gold>=it.cost&&!it.sold?'gold':''}" data-a="buy:${i}" ${it.sold||R.gold<it.cost?'disabled':''}>${it.sold?'Sold':'$'+it.cost}</button></div>`;}).join('');
+  scr().innerHTML=`<div class="scroll gutter"><div class="wrapw"><div class="win"><div class="bar"><span>Black Market</span><span class="num">$${R.gold} · ${R.hp}/${R.maxhp} HP</span></div></div><div class="shopg">${items}</div>
+  <div class="win"><div class="bar"><span>Charms ${R.charms.length}/${R.slots}</span><span>Tap to sell</span></div><div style="padding:8px"><div class="bag">${R.charms.map((c,i)=>`<button data-a="sell:${i}">${CHARMS.find(x=>x.id===c.id).n}</button>`).join('')||'<span class="dim">Empty</span>'}</div></div></div>
+  <div class="btnrow"><button class="btn" data-a="reroll" ${R.gold<R.shop.reroll?'disabled':''}>Reroll $${R.shop.reroll}</button><button class="btn" data-a="forms">Strike patterns</button><button class="btn go" data-a="leaveshop">Next fight</button></div></div></div>`;
+ },
+ battle(){
+  wall(null,false);
+  scr().innerHTML=`<div id="bt" class="gutter"><div id="side"><div id="en" class="win"></div><div id="pt" class="win"></div><div id="pa"></div></div><div id="bd"><div id="board"></div></div></div>`;
+  buildBoard();hud();
+  if(!S.tut){S.tut=true;Actions.help();}
+ },
+};
+
+/* ---- battle view ---- */
+const skinOf=id=>S.equip.cards[id]||S.equip.skin;
+const activeSkin=()=>{if(studioTarget==='all')return S.equip.skin;if(studioTarget[0]==='c')return skinOf(+studioTarget.slice(1));return null;};
+let cardEl={},geo={},lastStrike='',lastT=0,pos={};
+function buildBoard(){
+ const b=$('#board');b.innerHTML='';cardEl={};
+ for(let i=0;i<7;i++)b.insertAdjacentHTML('beforeend',`<div class="spot" data-col="${i}"></div>`);
+ for(let s=0;s<4;s++)b.insertAdjacentHTML('beforeend',`<div class="spot" data-f="${s}">${SUITS[s]}</div>`);
+ b.insertAdjacentHTML('beforeend','<div class="spot stock" data-stock="1">&#8635;</div><div class="spot" data-waste="1"></div><div class="spot pk" data-pocket="1" hidden>Pocket</div>');
+ for(let id=0;id<52;id++){
+  const s=Math.floor(id/13),r=id%13+1,h=HEROES.find(x=>x.s===s&&x.r===r),own=h&&S.heroes[h.id];
+  const e=document.createElement('div');e.dataset.id=id;
+  e.innerHTML=`<div class="f"><div class="tl"><span>${RANKS[r]}</span><span class="su">${SUITS[s]}</span></div>${h?`<img src="${heroImg(h.id,'small')}" class="${own?'':'off'}" alt="" draggable="false">`:(r===1?`<div class="bg" style="right:30%;bottom:14%;font-size:2.6em">${SUITS[s]}</div>`:`<div class="pp">${`<i>${SUITS[s]}</i>`.repeat(r)}</div>`)}</div><div class="b"></div>`;
+  b.append(e);cardEl[id]=e;
+ }
+ b.onpointerdown=pDown;b.onpointermove=pMove;b.onpointerup=pUp;b.onpointercancel=()=>{drag=null;layout();};
+ layout();
+}
+function layout(){
+ const b=$('#board');if(!b||!F)return;
+ const W=b.clientWidth,H=b.clientHeight,g=Math.max(3,Math.round(W*.009));
+ let cw=Math.min(112,Math.floor((W-6*g)/7)),ch=Math.round(cw*1.4);
+ if(ch*2.5+10>H){ch=Math.floor((H-10)/2.5);cw=Math.round(ch/1.4);}
+ const ox=Math.floor((W-(7*cw+6*g))/2),tabY=ch+8,colX=i=>ox+i*(cw+g);
+ b.style.setProperty('--cw',cw+'px');b.style.setProperty('--ch',ch+'px');
+ geo={cw,ch,g,ox,tabY,colX,W,H};
+ const at=(el,x,y)=>{el.style.transform=`translate(${x}px,${y}px)`;};
+ for(let i=0;i<7;i++)at($(`[data-col="${i}"]`,b),colX(i),tabY);
+ for(let s=0;s<4;s++)at($(`[data-f="${s}"]`,b),colX(3+s),0);
+ at($('[data-stock]',b),colX(0),0);at($('[data-waste]',b),colX(1),0);
+ const pk=$('[data-pocket]',b);pk.hidden=!R.talents.pocket;at(pk,colX(2),0);
+ const put=(k,x,y,z,peek)=>{
+  const e=cardEl[k.id];pos[k.id]={x,y};
+  e.className=`card sk-${skinOf(k.id)} bk-${S.equip.back}${k.s<2?' red':''}${k.up?' up':''}${k.ed?' ed-'+k.ed:''}${peek?' peek':''}`;
+  e.style.zIndex=z;at(e,x,y);
+ };
+ const B=F.B;
+ B.stock.forEach((k,i)=>put(k,colX(0),0,10+i));
+ B.waste.forEach((k,i)=>put(k,colX(1),0,10+i));
+ B.found.forEach((a,s)=>a.forEach((k,i)=>put(k,colX(3+s),0,10+i)));
+ if(B.pocket)put(B.pocket,colX(2),0,10);
+ const avail=H-tabY-ch-2;
+ B.cols.forEach((a,c)=>{
+  const down=ch*.13,up=ch*.27;let tot=0;
+  for(let i=0;i<a.length-1;i++)tot+=a[i].up?up:down;
+  const sc=tot>avail?avail/tot:1;let y=tabY;
+  a.forEach((k,i)=>{put(k,colX(c),Math.round(y),10+i,F.peek&&!k.up);y+=(k.up?up:down)*sc;});
+ });
+}
+function hud(){
+ if(!F||!$('#en'))return;
+ const e=F.e,rule=e.rule?RULES.find(r=>r.id===e.rule).n:'';
+ const st=[];if(F.wild)st.push(`Grace ${F.wild}`);if(F.free)st.push(`Time Stop ${F.free}`);if(F.stasis)st.push(`Blocked ${F.stasis}`);
+ $('#en').innerHTML=`<img src="${enemyImg(e.seed,e.kind)}" alt=""><div style="min-width:0"><div class="nm"><span>${e.name}</span><span class="dim">Ch ${R.ch+1}-${R.step+1}</span></div><div class="hp"><i style="width:${e.hp/e.maxhp*100}%"></i><span class="num">${fmtN(e.hp)}</span></div><div class="rule">${[rule,st.join(' · ')].filter(Boolean).join(' · ')}</div></div><div class="timer ${F.tick<=1?'warn':''}"><b class="num">${F.tick}</b>draws</div>`;
+ const p=F.pot,form=p.cards.length?evalForm(p.cards):null;
+ const flash=Date.now()-lastT<1800?lastStrike:'';
+ $('#pt').innerHTML=`<div style="min-width:0"><div class="form">${flash||(form?`${form.name} Lv${formValue(form).lv} · ${p.cards.length} card${p.cards.length>1?'s':''}`:'Drawing strikes your pot')}</div><div class="eq"><span class="bx c">${fmtN(p.chips)}</span>×<span class="bx m">${fmtN(p.mult)}</span>${p.x>1?`<span class="mult">×${+p.x.toFixed(2)}</span>`:''}</div></div><button id="strike" class="btn go" data-a="strike" ${p.active?'':'disabled'}>Strike</button>`;
+ const team=R.party.map(q=>{const h=heroOf(q.id),c=skillCost(q.id),v=F.charge[q.id],rd=v>=c;return `<button class="hb ${rd?'ready':''}" data-a="skill:${q.id}" aria-label="${h.skill[0]}: ${h.skill[1]}"><img src="${heroImg(q.id,'small')}" alt=""><span class="sk">${h.skill[0]}<div class="cg"><i style="width:${Math.min(100,v/c*100)}%"></i></div></span></button>`;}).join('');
+ const tool=(a,l,on,cls='')=>`<button class="tb ${cls}" data-a="${a}" ${on?'':'disabled'}>${l}</button>`;
+ const stuck=!hasPlay();
+ let tl='';
+ if(canFinish())tl+=tool('finish','Finish!',true,'call');
+ if(stuck)tl+=tool('redeal','Redeal (takes a hit)',true,'call');
+ if(R.talents.rewind)tl+=tool('rewind',`Rewind ${F.rewinds}`,F.rewinds>0);
+ if(R.talents.shuffle)tl+=tool('reshuffle',`Reshuffle ${F.shuffles}`,F.shuffles>0);
+ tl+=tool('hint','Hint',true)+tool('help','Help',true);
+ const ch=[];for(let i=0;i<R.slots;i++){const c=R.charms[i],d=c&&CHARMS.find(x=>x.id===c.id);ch.push(`<button class="chm ${c?'on r'+d.r:''}" ${c?`data-a="charminfo:${i}" aria-label="${d.n}"`:'disabled aria-label="Empty charm slot"'}>${c?d.n.slice(0,2):''}</button>`);}
+ $('#pa').innerHTML=`<div class="stat"><div class="hp us"><i style="width:${R.hp/R.maxhp*100}%"></i><span class="num">${R.hp}/${R.maxhp}</span></div><span class="gold num">$${R.gold}</span></div><div class="team">${team}</div><div class="tools">${ch.join('')}${tl}</div>`;
+}
+function fl(x,y,t,cls=''){
+ const b=$('#board');if(!b)return;
+ const d=document.createElement('div');d.className='fl '+cls;d.style.left=x+'px';d.style.top=y+'px';d.innerHTML=t;b.append(d);setTimeout(()=>d.remove(),760);
+}
+Bus.on=(t,d)=>{
+ const c=(geo.W||300)/2;
+ if(t==='play'){
+  const p=pos[d.id]||{x:c,y:0},base=330*Math.pow(1.0595,Math.min(30,d.n*2));
+  tone(base,.09);
+  if(d.ed)tone(base*1.5,.14,'triangle',.05);
+  setTimeout(()=>{const q=pos[d.id]||p;fl(q.x+geo.cw/2,geo.ch*.6,`<span class="chips">+${d.chips}</span> <span class="mult">+${d.mult}</span>`);},60);
+ }
+ if(t==='reveal'){tone(520,.05,'triangle');}
+ if(t==='move')tone(240,.04,'triangle',.03);
+ if(t==='draw')tone(180,.05,'triangle',.03);
+ if(t==='strike'){
+  lastStrike=`${d.form} Lv${d.lv}: ${fmtN(d.chips)} × ${fmtN(d.mult)}${d.x>1?' × '+(+d.x.toFixed(2)):''}`;lastT=Date.now();
+  arp([440,554,659,880].slice(0,1+Math.min(3,d.n)));
+  fl(c,geo.H*.34,fmtN(d.dmg),'big');
+  S.stats.best=Math.max(S.stats.best,d.dmg);S.stats.chain=Math.max(S.stats.chain,d.n);
+  setTimeout(hud,1900);
+ }
+ if(t==='attack'){tone(90,.25,'sawtooth',.07);const b=$('#bt');if(b){b.classList.remove('shake');void b.offsetWidth;b.classList.add('shake');}fl(c,geo.H*.5,`<span style="color:var(--red)">-${d.d} HP</span>`,'big');}
+ if(t==='heal')fl(c,geo.H*.5,`<span style="color:var(--lime)">+${d.n} HP</span>`);
+ if(t==='gold')fl(c,geo.H*.42,`<span class="money">+$${d.n} ${d.why}</span>`);
+ if(t==='saved'){toast(d.text+' saved the party');arp([660,880,1320]);}
+ if(t==='skill'){arp([523,659,784,1047],.05);fl(c,geo.H*.45,heroOf(d.id).skill[0],'big');}
+ if(t==='fullclear'){arp([523,659,784,1047,1319]);toast('Full clear! A fresh deck is dealt.');setTimeout(()=>{buildBoard();hud();},50);}
+ if(t==='redeal'){toast('Board re-dealt');}
+ if(t==='win'){S.stats.kills++;if(F.e.kind==='boss')S.stats.bosses++;setTimeout(onWin,750);}
+ if(t==='lose')setTimeout(()=>endRun(false),900);
+};
+function after(){layout();hud();save();}
+
+function onWin(){
+ if(!R||!F)return;
+ const r=settleFight(),boss=F.e.kind==='boss',cleared=boss&&R.ch===3;
+ arp([523,659,784,1047,1319]);
+ F=null;R.shop=makeShop();R.at='shop';
+ if(boss)R.hp=Math.min(R.maxhp,R.hp+Math.round(R.maxhp*.2));
+ save();
+ const rows=r.lines.map(l=>`<div><span>${l[0]}</span><span class="money num">+$${l[1]}</span></div>`).join('');
+ modal(`<div class="bar"><span>Enemy deleted</span></div><div class="in"><div class="rows">${rows}<div><span>Experience</span><span class="chips num">+${r.xp}</span></div><div><span>Gems</span><span class="chips num">+${r.gems}</span></div></div>
+ ${cleared?'<p style="margin:0">The Mainframe is clean. Cash out with a 300 gem bonus, or keep going into Overtime for more.</p>':''}
+ <div class="btnrow">${cleared?'<button class="btn gold" data-a="cashout">Cash out</button><button class="btn" data-a="toshop">Overtime</button>':'<button class="btn go" data-a="toshop">To the shop</button>'}</div></div>`);
+}
+function endRun(won){
+ if(!R)return;
+ const gems=R.gems+(won?300:0),xp=R.xp+(won?200:0),line=won?'Run cleared':'Party offline';
+ if(won)S.stats.clears++;
+ S.gems+=gems;
+ const lv=addXP(xp),hu=addHeroXP(xp),reach=`Chapter ${R.ch+1}, fight ${R.step+1}`;
+ R=null;F=null;save();
+ modal(`<div class="bar"><span>${line}</span></div><div class="in"><div class="rows"><div><span>Reached</span><span>${reach}</span></div><div><span>Gems earned</span><span class="chips num">+${gems}</span></div><div><span>Experience</span><span class="chips num">+${xp}</span></div></div>
+ ${[...lv,...hu].map(t=>`<div class="ab"><b>${t}</b></div>`).join('')}<button class="btn go" data-a="tohome">Continue</button></div>`);
+}
+
+/* ---- input ---- */
+let drag=null;
+function locate(id){
+ const B=F.B;
+ if(B.stock.some(k=>k.id===id))return{t:'stock'};
+ if(topOf(B.waste)&&topOf(B.waste).id===id)return{t:'waste'};
+ if(B.pocket&&B.pocket.id===id)return{t:'pocket'};
+ for(let c=0;c<7;c++){const i=B.cols[c].findIndex(k=>k.id===id);if(i>=0)return{t:'col',c,i};}
+ return null;
+}
+function pDown(e){
+ if(!F||F.over)return;
+ const st=e.target.closest('[data-stock]'),el=e.target.closest('.card');
+ if(st&&!el){doDraw();return;}
+ if(!el)return;
+ const id=+el.dataset.id,loc=locate(id);
+ if(!loc)return;
+ if(loc.t==='stock'){doDraw();return;}
+ if(loc.t==='col'&&(!F.B.cols[loc.c][loc.i].up||!validRun(loc.c,loc.i))){el.classList.add('nope');return;}
+ const ids=loc.t==='col'?F.B.cols[loc.c].slice(loc.i).map(k=>k.id):[id];
+ drag={loc,ids,sx:e.clientX,sy:e.clientY,moved:false};
+ try{$('#board').setPointerCapture(e.pointerId);}catch(x){}
+}
+function pMove(e){
+ if(!drag)return;
+ const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy;
+ if(!drag.moved&&Math.hypot(dx,dy)<7)return;
+ drag.moved=true;
+ drag.ids.forEach((id,i)=>{const el=cardEl[id],p=pos[id];el.classList.add('drag');el.style.zIndex=500+i;el.style.transform=`translate(${p.x+dx}px,${p.y+dy}px)`;});
+ drag.dx=dx;drag.dy=dy;
+}
+function pUp(){
+ if(!drag)return;
+ const d=drag;drag=null;
+ if(!d.moved){smartMove(d.loc,d.ids[0]);return;}
+ const p=pos[d.ids[0]],cx=p.x+d.dx+geo.cw/2,cy=p.y+d.dy+geo.ch/2;
+ let ok=false;
+ if(cy<geo.ch+geo.tabY*.1){
+  if(cx>geo.colX(3)-geo.g&&d.ids.length===1)ok=moveFound(d.loc);
+  else if(R.talents.pocket&&cx>geo.colX(2)&&cx<geo.colX(3)&&d.ids.length===1)ok=movePocket(d.loc);
+ }
+ if(!ok&&cy>=geo.ch*.6){
+  const c=Math.max(0,Math.min(6,Math.floor((cx-geo.ox+geo.g/2)/(geo.cw+geo.g))));
+  ok=moveCol(d.loc,c);
+ }
+ after();
+}
+function smartMove(loc,id){
+ const k=cardAt(loc),last=loc.t!=='col'||loc.i===F.B.cols[loc.c].length-1;
+ if(last&&canFound(k)&&moveFound(loc)){after();return;}
+ const opts=[];
+ for(let d=0;d<7;d++){if(loc.t==='col'&&d===loc.c)continue;if(canCol(k,d)){if(loc.t==='col'&&loc.i===0&&!F.B.cols[d].length)continue;opts.push(d);}}
+ opts.sort((a,b)=>(F.B.cols[b].length>0)-(F.B.cols[a].length>0));
+ if(opts.length&&moveCol(loc,opts[0])){after();return;}
+ if(last&&loc.t!=='pocket'&&R.talents.pocket&&!F.B.pocket&&movePocket(loc)){after();return;}
+ const e=cardEl[id];e.classList.remove('nope');void e.offsetWidth;e.classList.add('nope');
+ layout();
+}
+function doDraw(){if(!F||F.over)return;drawCard();after();}
+function showHint(){
+ const ms=legalMoves();
+ const m=ms.find(x=>x.kind==='found')||ms.find(x=>x.reveals)||ms.find(x=>x.src&&x.src.t==='waste')||ms.find(x=>x.clears)||null;
+ if(!m){toast('Draw from the stock');return;}
+ const k=cardAt(m.src),el=cardEl[k.id];el.classList.add('hint');setTimeout(()=>layout(),1100);
+}
+
+const Actions={
+ go(n){go(n);},
+ mute(){S.mute=!S.mute;save();go(SC);},
+ tohome(){closeModal();go('home');},
+ newrun(){
+  if(!S.party.length)return toast('Pick a heroine first');
+  const party=S.party.map(id=>({id,lv:S.heroes[id].lv,stars:S.heroes[id].stars}));
+  newRun(party,talents());R.pending=enemyFor(0,0);R.at='map';save();go('map');
+ },
+ resume(){go(R.at==='battle'&&F?'battle':R.at==='shop'?'shop':'map');},
+ abandon(){modal(`<div class="bar"><span>Abandon run?</span></div><div class="in"><p style="margin:0">You keep the gems and experience earned so far.</p><div class="btnrow"><button class="btn" data-a="close">Keep playing</button><button class="btn go" data-a="abandon2">Abandon</button></div></div>`);},
+ abandon2(){closeModal();endRun(false);},
+ close(){closeModal();},
+ fight(){startFight();R.at='battle';save();go('battle');},
+ strike(){manualStrike();after();},
+ skill(id){if(!skillReady(id)){const h=heroOf(id);toast(`<b>${h.skill[0]}</b>: ${fmt(h.skill[1])}`);return;}if(useSkill(id))after();},
+ rewind(){useRewind();after();},
+ reshuffle(){useShuffle();after();},
+ redeal(){emergencyRedeal();after();},
+ hint(){showHint();},
+ finish(){const t=setInterval(()=>{if(!F||F.over||!finishStep()){clearInterval(t);if(F&&!F.over)strike();after();return;}after();},120);},
+ charminfo(i){const c=R.charms[i],d=CHARMS.find(x=>x.id===c.id);toast(`<b>${d.n}</b>: ${fmt(d.t)}${d.grow?` <span class="dim">(now ${c.v||0})</span>`:''}`);},
+ forms(){modal(`<div class="bar"><span>Strike patterns</span></div><div class="in"><div class="rows">${FORMS.map(f=>{const v=formValue(f);return `<div><span>${f.name} <span class="dim">Lv${v.lv}</span><br><span class="dim" style="font-size:14px">${f.test}</span></span><span class="num"><span class="chips">+${v.c}</span> <span class="mult">+${v.m}</span></span></div>`;}).join('')}</div><button class="btn" data-a="close">Close</button></div>`);},
+ help(){modal(`<div class="bar"><span>How to play</span></div><div class="in">
+  <p style="margin:0"><b style="font-family:var(--disp);color:var(--amber)">Play Klondike.</b> Stack columns down in alternating colors and build each suit up from the Ace. Tap a card to auto-move it, or drag it.</p>
+  <p style="margin:0"><b style="font-family:var(--disp);color:var(--cyan)">Fill the pot.</b> Each foundation card adds Chips and +1 Mult. Revealing a card adds Chips. The pot grows as ${'<span class="chips">Chips</span> × <span class="mult">Mult</span>'}, so longer chains hit far harder.</p>
+  <p style="margin:0"><b style="font-family:var(--disp);color:var(--pink)">Strike.</b> Drawing from the stock strikes with your pot, then counts down the enemy timer. Set up long chains before you draw. Press Strike to finish an enemy off.</p>
+  <p style="margin:0"><b style="font-family:var(--disp);color:var(--lime)">Use your heroines.</b> Plays charge their abilities. Tap a glowing portrait to fire one. Tap any uncharged portrait to read what it does.</p>
+  <div class="btnrow"><button class="btn" data-a="forms">Strike patterns</button>${R&&SC==='battle'?'<button class="btn" data-a="abandon">Abandon run</button>':''}<button class="btn go" data-a="close">Got it</button></div></div>`);},
+ toshop(){closeModal();go('shop');},
+ cashout(){closeModal();endRun(true);},
+ buy(i){if(buy(+i)){tone(660,.08);save();go('shop');const it=R.shop.items[+i];if(it.type==='mod'){toast('Upgraded: '+it.got.map(k=>RANKS[k%13+1]+SUITS[Math.floor(k/13)]).join(', '));}}else toast(R.charms.length>=R.slots?'Charm slots are full. Tap a charm to sell it.':R.hp>=R.maxhp?'HP is already full':'Not enough $');},
+ sell(i){sellCharm(+i);save();go('shop');},
+ reroll(){if(reroll()){save();go('shop');}},
+ leaveshop(){nextStep();R.shop=null;R.at='map';save();go('map');},
+ slot(i){partyPick=+i;go('party');},
+ hero(id){
+  const h=heroOf(id),o=S.heroes[id];
+  if(!o){toast(`${h.title} (${h.rar}). Summon to unlock.`);return;}
+  const st=heroStats(h,o.lv,o.stars),inP=S.party.includes(id);
+  const ab=(lv,n,t,lk)=>`<div class="ab ${lk?'lock':''}"><span class="dim num">Lv ${lv}</span> <b>${n}</b><br>${fmt(t)}</div>`;
+  modal(`<div class="bar"><span>${h.name}</span><span class="rar ${h.rar}">${h.rar}</span></div><div class="in"><div class="hrow"><img class="px" src="${heroImg(id)}" alt=""><div><h3>${h.title}</h3><div class="dim">${RANKS[h.r]} of ${SUIT_NAMES[h.s]}</div><div class="stars">${'★'.repeat(o.stars)}</div><div class="num">Lv ${o.lv}/10 · ${o.lv<10?`${o.xp}/${heroNeed(o.lv)} XP`:'Max'}</div><div class="num">HP ${st.hp} · Power ${st.pow}</div><p class="dim" style="margin:6px 0 0">"${h.line}"</p></div></div>
+  ${ab(1,h.skill[0],`${h.skill[1]} Costs ${h.cost} charge.`,false)}${ab(3,h.passive[0],h.passive[1],o.lv<3)}${ab(6,'Overclocked',`${h.skill[0]} costs 2 less charge.`,o.lv<6)}
+  <div class="btnrow"><button class="btn go" data-a="assign:${id}">${inP?'Remove from party':`Put in slot ${partyPick+1}`}</button><button class="btn" data-a="close">Close</button></div></div>`);
+ },
+ assign(id){
+  if(R)return toast('Finish your run to change the party'),closeModal();
+  const i=S.party.indexOf(id);
+  if(i>=0){if(S.party.length===1)return toast('Keep at least one heroine');S.party.splice(i,1);}
+  else{if(partyPick<S.party.length)S.party[partyPick]=id;else S.party.push(id);}
+  closeModal();save();go('party');
+ },
+ pull(n){
+  n=+n;const cost=n===10?G_TEN:G_PULL;if(S.gems<cost)return;
+  S.gems-=cost;const res=[];for(let i=0;i<n;i++)res.push(rollOne(n===10&&i===9));
+  if(n===10&&!res.some(r=>r.rar!=='R')){/* slot 10 already guarantees this */}
+  save();showPull(res);
+ },
+ revealall(){document.querySelectorAll('.pcard').forEach(p=>p.classList.add('flip'));},
+ pulldone(){closeModal();go('summon');},
+ stab(k){studioTab=k;go('studio');},
+ tgt(k){studioTarget=k;go('studio');},
+ skin(id){
+  if(studioTarget==='all'){S.equip.skin=id;}
+  else if(studioTarget[0]==='s'){const s=+studioTarget[1];for(let r=0;r<13;r++)S.equip.cards[s*13+r]=id;}
+  else S.equip.cards[+studioTarget.slice(1)]=id;
+  save();go('studio');
+ },
+ clearskins(){S.equip.cards={};save();go('studio');},
+ back(id){S.equip.back=id;save();go('studio');},
+ bg(id){S.equip.bg=id;save();go('studio');},
+ locked(){toast('Unlock it from Summon or the level track');},
+ daily(){if(S.daily===today())return;S.daily=today();S.gems+=100;save();go('rewards');},
+ quest(id){const q=QUESTS.find(x=>x.id===id);if(S.quests[id])return;S.quests[id]=true;S.gems+=q.g;arp([660,880]);save();go('rewards');},
+ savecopy(){const code=btoa(unescape(encodeURIComponent(JSON.stringify({...S,run:null}))));
+  modal(`<div class="bar"><span>Save code</span></div><div class="in"><textarea id="savebox" rows="6" readonly style="width:100%;background:#0006;color:var(--txt);border:1px solid var(--line);font:13px monospace;user-select:text;-webkit-user-select:text">${code}</textarea><div class="btnrow"><button class="btn" data-a="savecopy2">Copy</button><button class="btn" data-a="close">Close</button></div></div>`);},
+ savecopy2(){const b=$('#savebox');b.select();const ok=()=>toast('Copied');(navigator.clipboard?navigator.clipboard.writeText(b.value).then(ok):Promise.reject()).catch(()=>toast('Text selected. Copy it by hand.'));},
+ saveload(){modal(`<div class="bar"><span>Load save code</span></div><div class="in"><textarea id="loadbox" rows="6" style="width:100%;background:#0006;color:var(--txt);border:1px solid var(--line);font:13px monospace;user-select:text;-webkit-user-select:text"></textarea><div class="btnrow"><button class="btn go" data-a="saveload2">Load</button><button class="btn" data-a="close">Cancel</button></div></div>`);},
+ saveload2(){try{const o=JSON.parse(decodeURIComponent(escape(atob($('#loadbox').value.trim()))));if(!o.heroes)throw 0;const f=fresh();S={...f,...o,run:null};R=null;F=null;save();closeModal();go('home');toast('Save loaded');}catch(e){toast('That code is not valid. Check it was copied in full.');}},
+ wipe(){modal(`<div class="bar"><span>Erase save?</span></div><div class="in"><p style="margin:0">This deletes your heroines, gems and skins on this browser.</p><div class="btnrow"><button class="btn" data-a="close">Keep save</button><button class="btn go" data-a="wipe2">Erase</button></div></div>`);},
+ wipe2(){S=fresh();R=null;F=null;save();closeModal();go('home');},
+};
+function showPull(res){
+ const thumb=r=>{
+  if(r.kind==='hero')return `<img src="${heroImg(r.id)}" alt="">`;
+  if(r.kind==='bg')return `<img src="${bgImg(r.id)}" alt="">`;
+  if(r.kind==='skin')return `<div class="sk-${r.id}" style="position:absolute;inset:0;background:var(--cbg);color:var(--ck);display:flex;align-items:center;justify-content:center;font-size:28px">A${SUITS[3]}</div>`;
+  return `<div class="bk-${r.id}" style="position:absolute;inset:0;background:var(--bk)"></div>`;
+ };
+ const cards=res.map(r=>`<div class="pcard ${r.rar}"><div class="bkf bk-${S.equip.back}"></div><div class="fr">${thumb(r)}<span>${r.n}${r.isNew?' · New':r.note?' · '+r.note:''}</span></div></div>`).join('');
+ const m=modal(`<div class="bar"><span>Summon</span><span class="num">${res.filter(r=>r.rar==='SSR').length} SSR · ${res.filter(r=>r.rar==='SR').length} SR</span></div><div class="in"><div class="pulls" ${res.length===1?'style="grid-template-columns:minmax(0,180px);justify-content:center"':''}>${cards}</div><div class="btnrow"><button class="btn" data-a="revealall">Reveal all</button><button class="btn go" data-a="pulldone">Done</button></div></div>`,'');
+ $('.dlg',m).style.maxWidth='620px';
+ const els=[...document.querySelectorAll('.pcard')];
+ els.forEach((p,i)=>setTimeout(()=>{p.classList.add('flip');const r=res[i];tone(r.rar==='SSR'?880:r.rar==='SR'?660:440,.12);if(r.rar==='SSR')arp([523,784,1047,1568]);},350+i*220));
+ const best=res.find(r=>r.rar==='SSR'&&r.kind==='hero');
+ if(best)setTimeout(()=>{if(!$('.pulls'))return;const h=heroOf(best.id);const o=document.createElement('div');o.id='splash';o.style.cssText='position:fixed;inset:0;z-index:65;background:#07041aee;display:flex;align-items:center;justify-content:center';o.className='gutter';o.innerHTML=`<div class="splash"><span class="rar SSR">SSR</span><img class="px" src="${heroImg(h.id)}" alt=""><h2>${h.name}</h2><div class="dim">${h.title}</div><p style="margin:0">"${h.line}"</p></div>`;o.onclick=()=>o.remove();document.body.append(o);},350+res.length*220+200);
+}
+
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-a]');if(!t||t.disabled)return;
+ const [a,...rest]=t.dataset.a.split(':'),arg=rest.join(':');
+ if(a!=='skill')tone(300,.03,'triangle',.02);
+ Actions[a]&&Actions[a](arg);
+});
+document.addEventListener('keydown',e=>{
+ if(SC!=='battle'||!F||$('#modal')||e.target.matches('textarea'))return;
+ if(e.key===' '||e.key==='d'){e.preventDefault();doDraw();}
+ if(e.key==='s'){manualStrike();after();}
+ if(e.key==='h')showHint();
+ if(['1','2','3'].includes(e.key)){const p=R.party[+e.key-1];if(p)Actions.skill(p.id);}
+});
+let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(layout,60);});
+
+(function boot(){
+ const st=document.createElement('style');st.textContent=skinCss();document.head.append(st);
+ go('home');
+ if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>layout());
+})();
+
+</script>
+</body></html>
